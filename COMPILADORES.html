@@ -148,7 +148,7 @@ OP_MENOR_IGUAL=112,OP_IGUAL_IGUAL=113,OP_DIFERENTE=114,INICIAR=115,
 ACTIVAR_GRAVEDAD=116,ACTIVAR_COLISIONES=117,ACTIVAR_VIENTO=118,
 MOSTRAR_PUNTAJE=119,MOSTRAR_VIDAS=120,MOSTRAR_POWERUP=121,
 REPRODUCIR_MUSICA=122,EFECTO_CAMARA=123,DISTANCIA_FUNC=124,AUDIO=125,
-HUD=126,SLASH=127,FIN=666,ERROR=999;
+HUD=126,SLASH=127,ROTACION=128,FIN=666,ERROR=999;
 
 const TOKEN_NAMES={};
 (function(){
@@ -171,7 +171,7 @@ const n={0:'CAMARA',1:'ENTIDAD',2:'OBJETO',3:'COLISION',4:'SONIDO',5:'COMPORTAMI
 107:'O',108:'Y',109:'>',110:'<',111:'>=',112:'<=',113:'==',114:'!=',115:'INICIAR',
 116:'ACT_GRAV',117:'ACT_COLS',118:'ACT_VIENTO',119:'MOST_PUNT',120:'MOST_VIDAS',
 121:'MOST_POWER',122:'REPR_MUSICA',123:'EF_CAMARA',124:'DIST_FUNC',125:'AUDIO',
-126:'HUD',127:'/',666:'FIN',999:'ERROR'};
+126:'HUD',127:'/',128:'ROTACION',666:'FIN',999:'ERROR'};
 Object.assign(TOKEN_NAMES,n);
 })();
 
@@ -205,7 +205,7 @@ si:SI,sino:SINO,o:TO,y:TY,
 iniciar:INICIAR,activar_gravedad:ACTIVAR_GRAVEDAD,activar_colisiones:ACTIVAR_COLISIONES,
 activar_viento:ACTIVAR_VIENTO,mostrar_puntaje:MOSTRAR_PUNTAJE,mostrar_vidas:MOSTRAR_VIDAS,
 mostrar_powerup_timer:MOSTRAR_POWERUP,reproducir_musica:REPRODUCIR_MUSICA,
-audio:AUDIO,hud:HUD
+audio:AUDIO,hud:HUD,rotacion:ROTACION
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -367,7 +367,7 @@ class AnalizadorSintactico {
     pushM(14,[VECTOR,CADENA,VAR,NUM,NUM_CON_SUFIJO,BOOLEANO],15);
     // OBJETO
     push(30,CADENA,31); push(31,ALLAVE,32);
-    pushM(32,[FORMA],33); pushM(32,[POSICION,COLOR,MATERIAL],12);
+    pushM(32,[FORMA],33); pushM(32,[POSICION,COLOR,MATERIAL,ROTACION],12);
     push(32,ANIMACION,34); push(32,CLLAVE,23);
     push(33,DOS_PUNTOS,35);
     pushM(35,[CUBO,ESFERA,CILINDRO,CONO,PIRAMIDE],36);
@@ -651,7 +651,7 @@ class AnalizadorSemantico {
   esSubVector(s) { return s && s[0]==='['; }
 
   aridadVector(p) {
-    if ([POSICION,GRAVEDAD,ILUMINACION,COLOR,OBJETIVO].includes(p)) return 3;
+    if ([POSICION,GRAVEDAD,ILUMINACION,COLOR,OBJETIVO,ROTACION].includes(p)) return 3;
     return -1;
   }
   rangoComp(p) {
@@ -675,7 +675,7 @@ class AnalizadorSemantico {
     const m={[POSICION]:'posicion',[GRAVEDAD]:'gravedad',[ILUMINACION]:'iluminacion',
       [COLOR]:'color',[OBJETIVO]:'objetivo',[COLORES]:'colores',[MASA]:'masa',
       [REBOTE]:'rebote',[RUGOSIDAD]:'rugosidad',[VOLUMEN]:'volumen',
-      [INTENSIDAD]:'intensidad',[ANGULO]:'angulo'};
+      [INTENSIDAD]:'intensidad',[ANGULO]:'angulo',[ROTACION]:'rotacion'};
     return m[t]||'propiedad';
   }
   nombreForma(t) {
@@ -777,6 +777,16 @@ class AnalizadorSemantico {
 function parseVec(vecStr) {
   const nums = vecStr.replace(/[\[\]]/g,'').split(',').map(s => parseFloat(s.trim()));
   return nums.filter(n => !isNaN(n));
+}
+
+// Separa un lexema NUM_CON_SUFIJO ("0.3s", "90grados/s", "2s") en número y unidad
+function parseValorUnidad(lex) {
+  const m = String(lex).match(/^([0-9]*\.?[0-9]+)(.*)$/);
+  if (!m) return { valor: 0, unidad: '' };
+  return { valor: parseFloat(m[1]), unidad: m[2].toLowerCase() };
+}
+function esGrados(unidad) {
+  return unidad.indexOf('grado') === 0 || unidad.indexOf('deg') === 0 || unidad.indexOf('°') === 0;
 }
 
 function extractSceneData(toks) {
@@ -888,9 +898,13 @@ function extractSceneData(toks) {
             obj.posicion = parseVec(toks[i+2].lexema);
           if (toks[i].id===COLOR && i+2<toks.length && toks[i+1].id===DOS_PUNTOS && toks[i+2].id===VECTOR)
             obj.color = parseVec(toks[i+2].lexema);
+          if (toks[i].id===ROTACION && i+2<toks.length && toks[i+1].id===DOS_PUNTOS && toks[i+2].id===VECTOR)
+            obj.rotacion = parseVec(toks[i+2].lexema);   // grados sobre los ejes del mundo
           if (toks[i].id===ANIMACION && i+1<toks.length && toks[i+1].id===CADENA) {
             let animName = toks[i+1].lexema;
-            let anim = { name: animName, tipo: null, eje: [0,0,1], velocidad: 1, distancia: [0,0,1], radio: 1 };
+            let anim = { name: animName, tipo: null, eje: [0,0,1], velocidad: 1,
+                         velocidadExplicita: false, distancia: [0,0,1], radio: 1,
+                         anguloRad: null, anguloRango: null, duracion: null };
             let a = i+2;
             while(a<toks.length && toks[a].id!==ALLAVE) a++;
             let aDepth=1; a++;
@@ -903,10 +917,26 @@ function extractSceneData(toks) {
                 anim.eje = parseVec(toks[a+2].lexema);
               if(toks[a].id===DISTANCIA && a+2<toks.length && toks[a+1].id===DOS_PUNTOS && toks[a+2].id===VECTOR)
                 anim.distancia = parseVec(toks[a+2].lexema);
-              if(toks[a].id===VELOCIDAD && a+2<toks.length && toks[a+1].id===DOS_PUNTOS)
-                anim.velocidad = parseFloat(toks[a+2].lexema)||1;
+              if(toks[a].id===VELOCIDAD && a+2<toks.length && toks[a+1].id===DOS_PUNTOS) {
+                // `90grados/s` se guarda como NUM_CON_SUFIJO: hay que convertir a rad/s
+                const v = parseValorUnidad(toks[a+2].lexema);
+                anim.velocidad = esGrados(v.unidad) ? v.valor*Math.PI/180 : v.valor;
+                anim.velocidadExplicita = true;
+              }
               if(toks[a].id===RADIO && a+2<toks.length && toks[a+1].id===DOS_PUNTOS)
                 anim.radio = parseFloat(toks[a+2].lexema)||1;
+              if(toks[a].id===DURACION && a+2<toks.length && toks[a+1].id===DOS_PUNTOS)
+                anim.duracion = parseValorUnidad(toks[a+2].lexema).valor || null;
+              if(toks[a].id===ANGULO && a+2<toks.length && toks[a+1].id===DOS_PUNTOS) {
+                // `angulo: 360` → giro completo;  `angulo: [-5, 5]` → rango de oscilación.
+                // Siempre en grados; se convierte a radianes aquí.
+                if (toks[a+2].id===VECTOR) {
+                  const r = parseVec(toks[a+2].lexema);
+                  if (r.length>=2) anim.anguloRango = [r[0]*Math.PI/180, r[1]*Math.PI/180];
+                } else {
+                  anim.anguloRad = parseValorUnidad(toks[a+2].lexema).valor*Math.PI/180;
+                }
+              }
               a++;
             }
             if(!obj.animaciones) obj.animaciones = [];
@@ -1019,6 +1049,21 @@ function renderScene(data, container) {
   grid.rotation.x = Math.PI/2; // XY plane
   scene3d.add(grid);
 
+  // Gira la malla sobre un eje del MUNDO (el que declara el DSL), no sobre sus ejes
+  // locales. Es la diferencia clave: cilindros, conos y pirámides ya llegan rotados
+  // 90° en X para pasar de Y-up a Z-up, así que sumar a mesh.rotation.z giraba en el
+  // plano equivocado y además destruía esa corrección.
+  // Debe declararse antes de addEntity, que ya lo usa para la orientación estática.
+  const ejeTmp = new THREE.Vector3();
+  function rotarEnEje(mesh, eje, delta) {
+    if (!delta || !isFinite(delta)) return;
+    const e = eje || [0,0,1];
+    const len = Math.hypot(e[0]||0, e[1]||0, e[2]||0);
+    if (!len) return;
+    ejeTmp.set((e[0]||0)/len, (e[1]||0)/len, (e[2]||0)/len);
+    mesh.rotateOnWorldAxis(ejeTmp, delta);
+  }
+
   // ── Estado del jugador controlable y de los cuerpos estáticos ──
   let jugador = null;          // { group, controles, vel, bbox }
   const cajasEstaticas = [];   // AABB en coordenadas de mundo
@@ -1047,6 +1092,15 @@ function renderScene(data, container) {
       // Cylinder/cone are Y-up in Three.js, DSL uses Z-up
       if (obj.forma && [CILINDRO,CONO,PIRAMIDE].includes(obj.forma.tipo)) {
         mesh.rotation.x = Math.PI/2;
+      }
+      // Orientación estática declarada con `rotacion: [x, y, z];` (grados).
+      // Se aplica DESPUÉS de la corrección Z-up y sobre ejes del mundo, para que
+      // componga igual que las animaciones y el resultado sea predecible.
+      if (obj.rotacion && obj.rotacion.length >= 3) {
+        const gr = Math.PI/180;
+        rotarEnEje(mesh, [1,0,0], (obj.rotacion[0]||0)*gr);
+        rotarEnEje(mesh, [0,1,0], (obj.rotacion[1]||0)*gr);
+        rotarEnEje(mesh, [0,0,1], (obj.rotacion[2]||0)*gr);
       }
       // Caja local del objeto, para colisiones y para el volumen del jugador
       geo.computeBoundingBox();
@@ -1276,12 +1330,27 @@ function renderScene(data, container) {
     const time = clock.getElapsedTime();
     fisicaJugador(dt);
     for (const mesh of animatedMeshes) {
-      for (const anim of mesh.userData.animaciones) {
-        if (anim.tipo === 'rotacion' || anim.tipo === 'rotacion_ciclica') {
-          const rx = anim.eje[0]||0, ry = anim.eje[1]||0, rz = anim.eje[2]||0;
-          mesh.rotation.x += rx * anim.velocidad * dt;
-          mesh.rotation.y += ry * anim.velocidad * dt;
-          mesh.rotation.z += rz * anim.velocidad * dt;
+      const anims = mesh.userData.animaciones;
+      if (!mesh.userData.animEstado) mesh.userData.animEstado = [];
+      for (let ai = 0; ai < anims.length; ai++) {
+        const anim = anims[ai];
+        // El estado va por malla, no por animación: varias instancias de la misma
+        // entidad comparten el objeto `anim`, así que guardarlo ahí las anularía
+        const est = mesh.userData.animEstado[ai] || (mesh.userData.animEstado[ai] = {angPrev:0});
+        if (anim.tipo === 'rotacion') {
+          // Velocidad angular: la explícita manda; si no, se deduce de angulo/duracion
+          let w = anim.velocidad;
+          if (!anim.velocidadExplicita && anim.anguloRad != null && anim.duracion)
+            w = anim.anguloRad / anim.duracion;
+          rotarEnEje(mesh, anim.eje, w * dt);
+        } else if (anim.tipo === 'rotacion_ciclica') {
+          // Oscila dentro de `angulo: [min, max]` con periodo `duracion`
+          const rango = anim.anguloRango || [-anim.velocidad*0.1, anim.velocidad*0.1];
+          const periodo = anim.duracion || 1;
+          const centro = (rango[0]+rango[1])/2, semi = (rango[1]-rango[0])/2;
+          const ang = centro + semi*Math.sin(2*Math.PI*time/periodo);
+          rotarEnEje(mesh, anim.eje, ang - est.angPrev);
+          est.angPrev = ang;
         } else if (anim.tipo === 'flotar' || anim.tipo === 'traslacion_ciclica' || anim.tipo === 'orbital') {
           const bp = mesh.userData.basePosition;
           if (anim.tipo === 'orbital') {
@@ -1559,6 +1628,7 @@ entidad Moneda {
     objeto "disco" {
         forma: cilindro(3, 1);
         posicion: [0, 0, 0];
+        rotacion: [90, 0, 0];
         color: [255, 215, 0];
         material: "oro";
         animacion "flotar" {
