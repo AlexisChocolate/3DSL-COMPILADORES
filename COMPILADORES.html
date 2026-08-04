@@ -306,12 +306,42 @@ class AnalizadorLexico {
 // ═══════════════════════════════════════════════════════════════
 //  ANALIZADOR SINTÁCTICO — Autómata Finito Modular
 // ═══════════════════════════════════════════════════════════════
+
+// Varios puntos del lenguaje reutilizan los mismos estados: una propiedad
+// `x: valor;` (12), una forma (33), una llamada a acción (45), un bloque
+// `animacion` (34)... Son subrutinas del autómata, y al entrar en una hay que
+// recordar dónde seguir al salir. Eso es una PILA DE RETORNO, igual que la de
+// llamadas de una función: por eso un único registro no alcanzaba y hubo que
+// inventar `animParentState` aparte cuando las animaciones se anidaron.
+//
+// Clave = estado subrutina. Valor = null si se entra desde cualquier estado,
+// o la lista de estados desde los que esa entrada cuenta como llamada.
+const ENTRADAS_SUBRUTINA = {
+  12: null,   // prop: valor;
+  33: null,   // forma: figura(...)
+  17: null,   // camara → efectos → prop
+  45: null,   // hub de acciones
+  500: null,  // activar_si (se omite hasta el ;)
+  34: null,   // bloque animacion
+  14: [4,5]   // gravedad:/iluminacion: en INICIO entran a 14 sin pasar por 12
+};
+
+// Dónde continúa el bloque que contiene la sentencia. Por defecto es el propio
+// estado (las listas de propiedades vuelven sobre sí mismas); los estados
+// intermedios —la tecla en `controles`, el `obj.` de una llamada en escena—
+// delegan en el estado que reanuda la lista.
+const CONTINUACION_BLOQUE = {
+  73: 71,                                    // W: accion...  → vuelve a la lista de teclas
+  403: 44,                                   // obj.accion(...) dentro de al_colisionar
+  4: 0, 5: 0,                                // gravedad:/iluminacion: → nivel superior
+  986: 83, 90: 83, 91: 83, 94: 83, 95: 83, 96: 83   // llamadas dentro de escena
+};
+
 class AnalizadorSintactico {
   constructor() {
     this.modoActual = 'INICIO';
     this.estadoActual = 0;
-    this.estadoRetorno = 0;
-    this.animParentState = 32;
+    this.pilaRetorno = [];
     this.omitirHastaPComa = false;
     this.errorMsg = '';
     this.errorToken = -1;
@@ -490,30 +520,27 @@ class AnalizadorSintactico {
     return ERROR;
   }
 
-  registrarRetorno(prev, nuevo) {
-    if (nuevo===12) this.estadoRetorno=prev;
-    else if (nuevo===33) this.estadoRetorno=prev;
-    else if (nuevo===17) this.estadoRetorno=prev;
-    else if (nuevo===14 && (prev===4||prev===5)) this.estadoRetorno=0;
-    else if (nuevo===45) {
-      if (prev===73||prev===71) this.estadoRetorno=71;
-      else if (prev===44||prev===403) this.estadoRetorno=44;
-      else if (prev===65) this.estadoRetorno=65;
-      else if (prev===301) this.estadoRetorno=301;
-      else if (prev===986) this.estadoRetorno=83;
-      else if (this.modoActual==='ESCENA') this.estadoRetorno=83;
-      else if (this.modoActual==='CAMARA') this.estadoRetorno=11;
-    }
-    else if (nuevo===34) this.animParentState=prev;
-    else if (nuevo===500) this.estadoRetorno=prev;
-    else if (nuevo===15 && (prev===90||prev===91)) this.estadoRetorno=83;
+  // Entrar a una subrutina: guarda dónde continuar. Sustituye a la antigua
+  // cadena de if/else que mezclaba casos de CAMARA, ENTIDAD y ESCENA.
+  apilarRetorno(prev, nuevo) {
+    if (prev === nuevo) return;                      // auto-transición, no es llamada
+    const desde = ENTRADAS_SUBRUTINA[nuevo];
+    if (desde === undefined) return;                 // el destino no es subrutina
+    if (desde !== null && desde.indexOf(prev) === -1) return;
+    const cont = CONTINUACION_BLOQUE[prev];
+    this.pilaRetorno.push(cont !== undefined ? cont : prev);
+  }
+
+  // Salir de una subrutina. Con la pila vacía cae al nivel superior (0).
+  desapilarRetorno() {
+    return this.pilaRetorno.length ? this.pilaRetorno.pop() : 0;
   }
 
   verificarToken(token) {
     if (token===FIN) return this.esFinal(this.modoActual,this.estadoActual)?0:ERROR;
 
     if (this.omitirHastaPComa) {
-      if (token===PCOMA) { this.omitirHastaPComa=false; this.estadoActual=this.estadoRetorno; }
+      if (token===PCOMA) { this.omitirHastaPComa=false; this.estadoActual=this.desapilarRetorno(); }
       return this.estadoActual;
     }
 
@@ -523,7 +550,7 @@ class AnalizadorSintactico {
 
     // Animation block close
     if (this.estadoActual===301 && token===CLLAVE) {
-      this.estadoActual=this.animParentState; return this.estadoActual;
+      this.estadoActual=this.desapilarRetorno(); return this.estadoActual;
     }
     // destruir_si skip
     if (this.estadoActual===501) {
@@ -532,20 +559,20 @@ class AnalizadorSintactico {
     }
     // activar_si skip
     if (this.estadoActual===500) {
-      if (token===PCOMA) this.estadoActual=this.estadoRetorno;
+      if (token===PCOMA) this.estadoActual=this.desapilarRetorno();
       return this.estadoActual;
     }
     // Property value end
     if (this.estadoActual===15 && token===PCOMA) {
-      this.estadoActual=this.estadoRetorno; return this.estadoActual;
+      this.estadoActual=this.desapilarRetorno(); return this.estadoActual;
     }
     // Zero-arg action end
     if (this.estadoActual===45 && token===PCOMA) {
-      this.estadoActual=this.estadoRetorno; return this.estadoActual;
+      this.estadoActual=this.desapilarRetorno(); return this.estadoActual;
     }
     // Bare-arg end
     if (this.estadoActual===490 && token===PCOMA) {
-      this.estadoActual=this.estadoRetorno; return this.estadoActual;
+      this.estadoActual=this.desapilarRetorno(); return this.estadoActual;
     }
     // Bare-arg + si/modo/al_otro [FIX]
     if (this.estadoActual===490 && (token===SI||token===MODO||token===AL_OTRO)) {
@@ -554,7 +581,7 @@ class AnalizadorSintactico {
     }
     // Paren arg end
     if (this.estadoActual===47 && token===PCOMA) {
-      this.estadoActual=this.estadoRetorno; return this.estadoActual;
+      this.estadoActual=this.desapilarRetorno(); return this.estadoActual;
     }
     // destruir/recolectar zero-arg end
     if (this.estadoActual===200 && token===PCOMA) {
@@ -573,20 +600,27 @@ class AnalizadorSintactico {
     const prev = this.estadoActual;
     let nuevo = this.transitar(this.modoActual, this.estadoActual, token);
 
-    // Empty parens
+    // Paréntesis vacíos: `accion()`. El retorno correcto ya está en la pila
+    // desde que se entró a 45, así que aquí sólo hay que avanzar a 15.
     if (nuevo===ERROR && this.estadoActual===46) {
       if (token===CPARENTESIS) {
         this.estadoActual=15;
-        if (this.modoActual==='ESCENA') this.estadoRetorno=83;
-        else if (this.modoActual==='ENTIDAD') this.estadoRetorno=44;
         return 15;
       }
       return this.estadoActual;
     }
 
     if (nuevo===ERROR) {
+      // Un token de apertura (entidad/escena/camara/[) puede abrir otro módulo.
+      // Guardamos dónde estábamos: si cambiarModulo nos deja en el MISMO sitio,
+      // reintentar sería recursión infinita — p. ej. `entidad entidad X {}`
+      // desbordaba la pila y tumbaba la página en vez de reportar el error.
+      const modoPrevio = this.modoActual, estadoPrevio = this.estadoActual;
       const mr = this.cambiarModulo(token);
-      if (mr!==ERROR) return this.verificarToken(token);
+      if (mr!==ERROR &&
+          !(this.modoActual===modoPrevio && this.estadoActual===estadoPrevio))
+        return this.verificarToken(token);
+      this.modoActual = modoPrevio; this.estadoActual = estadoPrevio;
       return ERROR;
     }
 
@@ -601,14 +635,14 @@ class AnalizadorSintactico {
       this.omitirHastaPComa=true; return this.estadoActual;
     }
 
-    this.registrarRetorno(prev, nuevo);
+    this.apilarRetorno(prev, nuevo);
     this.estadoActual = nuevo;
     return nuevo;
   }
 
   analizar(tokenIds) {
-    this.modoActual='INICIO'; this.estadoActual=0; this.estadoRetorno=0;
-    this.animParentState=32; this.omitirHastaPComa=false;
+    this.modoActual='INICIO'; this.estadoActual=0;
+    this.pilaRetorno=[]; this.omitirHastaPComa=false;
     this.errorMsg=''; this.errorToken=-1;
 
     for (let i = 0; i < tokenIds.length; i++) {
@@ -904,7 +938,7 @@ function extractSceneData(toks) {
             let animName = toks[i+1].lexema;
             let anim = { name: animName, tipo: null, eje: [0,0,1], velocidad: 1,
                          velocidadExplicita: false, distancia: [0,0,1], radio: 1,
-                         anguloRad: null, anguloRango: null, duracion: null };
+                         anguloRad: null, anguloRango: null, duracion: null, loop: null };
             let a = i+2;
             while(a<toks.length && toks[a].id!==ALLAVE) a++;
             let aDepth=1; a++;
@@ -927,6 +961,8 @@ function extractSceneData(toks) {
                 anim.radio = parseFloat(toks[a+2].lexema)||1;
               if(toks[a].id===DURACION && a+2<toks.length && toks[a+1].id===DOS_PUNTOS)
                 anim.duracion = parseValorUnidad(toks[a+2].lexema).valor || null;
+              if(toks[a].id===LOOP && a+2<toks.length && toks[a+1].id===DOS_PUNTOS && toks[a+2].id===BOOLEANO)
+                anim.loop = (toks[a+2].lexema === 'true');
               if(toks[a].id===ANGULO && a+2<toks.length && toks[a+1].id===DOS_PUNTOS) {
                 // `angulo: 360` → giro completo;  `angulo: [-5, 5]` → rango de oscilación.
                 // Siempre en grados; se convierte a radianes aquí.
@@ -1325,9 +1361,16 @@ function renderScene(data, container) {
   }
 
   // Animation loop
+  // Periodo de un ciclo, en segundos. Una `velocidad` explícita manda sobre `duracion`;
+  // si no hay ninguna, se cae al valor por defecto de velocidad (1 rad/s).
+  function periodoAnim(anim) {
+    if (anim.velocidadExplicita && anim.velocidad) return 2*Math.PI/Math.abs(anim.velocidad);
+    if (anim.duracion) return anim.duracion;
+    return 2*Math.PI/Math.abs(anim.velocidad || 1);
+  }
+
   function animate() {
     const dt = Math.min(clock.getDelta(), 0.05); // evita saltos si la pestaña estuvo oculta
-    const time = clock.getElapsedTime();
     fisicaJugador(dt);
     for (const mesh of animatedMeshes) {
       const anims = mesh.userData.animaciones;
@@ -1336,31 +1379,49 @@ function renderScene(data, container) {
         const anim = anims[ai];
         // El estado va por malla, no por animación: varias instancias de la misma
         // entidad comparten el objeto `anim`, así que guardarlo ahí las anularía
-        const est = mesh.userData.animEstado[ai] || (mesh.userData.animEstado[ai] = {angPrev:0});
+        const est = mesh.userData.animEstado[ai] ||
+                    (mesh.userData.animEstado[ai] = {angPrev:0, t:0, terminada:false});
+        if (est.terminada) continue;
+
+        // ── loop / duracion ──
+        // `loop: true` (o ausente) repite indefinidamente. `loop: false` corre una sola
+        // pasada: dura `duracion` si se declaró, o un ciclo completo si no, y luego
+        // congela la malla en el estado alcanzado.
+        const repite = anim.loop !== false;
+        const periodo = periodoAnim(anim);
+        let dtEf = dt;
+        if (!repite) {
+          const total = anim.duracion != null ? anim.duracion : periodo;
+          if (est.t >= total) { est.terminada = true; continue; }
+          dtEf = Math.min(dt, total - est.t);   // el último frame se recorta para
+        }                                       // terminar exactamente en `total`
+        est.t += dtEf;
+        const t = est.t;                        // reloj propio, no el global
+
         if (anim.tipo === 'rotacion') {
           // Velocidad angular: la explícita manda; si no, se deduce de angulo/duracion
           let w = anim.velocidad;
           if (!anim.velocidadExplicita && anim.anguloRad != null && anim.duracion)
             w = anim.anguloRad / anim.duracion;
-          rotarEnEje(mesh, anim.eje, w * dt);
+          rotarEnEje(mesh, anim.eje, w * dtEf);
         } else if (anim.tipo === 'rotacion_ciclica') {
           // Oscila dentro de `angulo: [min, max]` con periodo `duracion`
           const rango = anim.anguloRango || [-anim.velocidad*0.1, anim.velocidad*0.1];
-          const periodo = anim.duracion || 1;
           const centro = (rango[0]+rango[1])/2, semi = (rango[1]-rango[0])/2;
-          const ang = centro + semi*Math.sin(2*Math.PI*time/periodo);
+          const ang = centro + semi*Math.sin(2*Math.PI*t/periodo);
           rotarEnEje(mesh, anim.eje, ang - est.angPrev);
           est.angPrev = ang;
         } else if (anim.tipo === 'flotar' || anim.tipo === 'traslacion_ciclica' || anim.tipo === 'orbital') {
           const bp = mesh.userData.basePosition;
+          const fase = 2*Math.PI*t/periodo;
           if (anim.tipo === 'orbital') {
-             mesh.position.x = bp.x + Math.cos(time * anim.velocidad) * anim.radio;
-             mesh.position.y = bp.y + Math.sin(time * anim.velocidad) * anim.radio;
+             mesh.position.x = bp.x + Math.cos(fase) * anim.radio;
+             mesh.position.y = bp.y + Math.sin(fase) * anim.radio;
           } else {
              const dx = anim.distancia[0]||0, dy = anim.distancia[1]||0, dz = anim.distancia[2]||0;
-             mesh.position.x = bp.x + Math.sin(time * anim.velocidad) * dx;
-             mesh.position.y = bp.y + Math.sin(time * anim.velocidad) * dy;
-             mesh.position.z = bp.z + Math.sin(time * anim.velocidad) * dz;
+             mesh.position.x = bp.x + Math.sin(fase) * dx;
+             mesh.position.y = bp.y + Math.sin(fase) * dy;
+             mesh.position.z = bp.z + Math.sin(fase) * dz;
           }
         }
       }
@@ -1447,7 +1508,14 @@ function runAnalysis() {
 
   // ── FASE 2: SINTÁCTICO ──
   const sint = new AnalizadorSintactico();
-  const sintOk = sint.analizar(lex.tokens);
+  let sintOk;
+  try {
+    sintOk = sint.analizar(lex.tokens);
+  } catch (e) {
+    // Red de seguridad: un fallo del autómata no debe dejar la página en blanco
+    sintOk = false;
+    sint.errorMsg = `Fallo interno del analizador: ${e.message}`;
+  }
   const pSint = document.getElementById('pane-sintactico');
 
   if (!sintOk) {
