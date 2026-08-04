@@ -1,0 +1,2649 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSL 3D — Analizador de Escenas | Compiladores 2026-I</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    :root {
+      --bg: #0b1120;
+      --surface: #131c31;
+      --card: #1a2540;
+      --border: #243352;
+      --accent: #4682B4;
+      --accent-light: #5a9fd4;
+      --accent-dim: #2d5a80;
+      --text: #e2e8f0;
+      --text2: #8b9dc3;
+      --text3: #5a6d8a;
+      --ok: #22c55e;
+      --err: #f87171;
+      --warn: #fbbf24;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Inter', system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-light);
+      letter-spacing: -0.3px
+    }
+
+    .header .sub {
+      font-size: 12px;
+      color: var(--text2)
+    }
+
+    .badge {
+      background: var(--accent-dim);
+      color: var(--accent-light);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600
+    }
+
+    /* LAYOUT */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: calc(100vh - 52px);
+      overflow: hidden
+    }
+
+    @media(max-width:900px) {
+      .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr
+      }
+    }
+
+    /* EDITOR */
+    .editor-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border)
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    .toolbar select,
+    .toolbar button {
+      font-family: var(--sans);
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer
+    }
+
+    .toolbar select {
+      background: var(--card);
+      color: var(--text);
+      flex: 1;
+      max-width: 240px
+    }
+
+    .toolbar select:focus {
+      outline: 1px solid var(--accent);
+      border-color: var(--accent)
+    }
+
+    .btn-run {
+      background: var(--accent);
+      color: #fff;
+      border: none !important;
+      font-weight: 600;
+      transition: background .15s
+    }
+
+    .btn-run:hover {
+      background: var(--accent-light)
+    }
+
+    .btn-run:disabled {
+      opacity: .5;
+      cursor: not-allowed
+    }
+
+    textarea#code {
+      flex: 1;
+      resize: none;
+      background: var(--bg);
+      color: var(--text);
+      border: none;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.6;
+      tab-size: 4;
+      outline: none
+    }
+
+    textarea#code::placeholder {
+      color: var(--text3)
+    }
+
+    .line-info {
+      font-size: 11px;
+      color: var(--text3);
+      padding: 4px 14px;
+      background: var(--surface);
+      border-top: 1px solid var(--border)
+    }
+
+    /* RESULTS */
+    .results-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto
+    }
+
+    .tab {
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text2);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all .15s;
+      white-space: nowrap;
+      user-select: none
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: rgba(70, 130, 180, .06)
+    }
+
+    .tab.active {
+      color: var(--accent-light);
+      border-bottom-color: var(--accent)
+    }
+
+    .tab .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 6px;
+      vertical-align: middle
+    }
+
+    .dot-ok {
+      background: var(--ok)
+    }
+
+    .dot-err {
+      background: var(--err)
+    }
+
+    .dot-warn {
+      background: var(--warn)
+    }
+
+    .dot-none {
+      background: var(--text3)
+    }
+
+    .tab-content {
+      flex: 1;
+      overflow: auto;
+      padding: 14px
+    }
+
+    .tab-pane {
+      display: none;
+      height: 100%
+    }
+
+    .tab-pane.active {
+      display: block
+    }
+
+    /* TOKEN TABLE */
+    .tok-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      font-family: var(--mono)
+    }
+
+    .tok-table th {
+      text-align: left;
+      padding: 6px 8px;
+      background: var(--surface);
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      font-weight: 600
+    }
+
+    .tok-table td {
+      padding: 4px 8px;
+      border-bottom: 1px solid rgba(36, 51, 82, .4);
+      color: var(--text)
+    }
+
+    .tok-table tr:hover td {
+      background: rgba(70, 130, 180, .06)
+    }
+
+    .tok-table .ln {
+      color: var(--text3);
+      width: 35px
+    }
+
+    .tok-table .tid {
+      color: var(--accent-light);
+      width: 35px
+    }
+
+    .tok-table .lex {
+      color: var(--warn)
+    }
+
+    .tok-table .tname {
+      color: var(--text2)
+    }
+
+    /* MESSAGES */
+    .msg {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2)
+    }
+
+    .msg-ok {
+      background: linear-gradient(90deg, rgba(34, 197, 94, .15) 0%, rgba(34, 197, 94, .02) 100%);
+      border: 1px solid rgba(34, 197, 94, .1);
+      border-left: 4px solid var(--ok);
+      color: #4ade80;
+      font-weight: 500;
+      text-shadow: 0 0 10px rgba(74, 222, 128, 0.2)
+    }
+
+    .msg-err {
+      background: rgba(248, 113, 113, .08);
+      border: 1px solid rgba(248, 113, 113, .2);
+      color: var(--err)
+    }
+
+    .msg-warn {
+      background: rgba(251, 191, 36, .08);
+      border: 1px solid rgba(251, 191, 36, .2);
+      color: var(--warn)
+    }
+
+    .msg-info {
+      background: rgba(70, 130, 180, .08);
+      border: 1px solid rgba(70, 130, 180, .2);
+      color: var(--accent-light)
+    }
+
+    .err-list {
+      list-style: none;
+      padding: 0
+    }
+
+    .err-list li {
+      padding: 8px 12px;
+      border-left: 3px solid var(--err);
+      background: rgba(248, 113, 113, .05);
+      margin-bottom: 6px;
+      border-radius: 0 4px 4px 0;
+      font-family: var(--mono);
+      font-size: 12px
+    }
+
+    .err-list .code {
+      color: var(--err);
+      font-weight: 600
+    }
+
+    .err-list .line {
+      color: var(--warn)
+    }
+
+    .err-list .emsg {
+      color: var(--text)
+    }
+
+    .placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text3);
+      font-size: 14px;
+      text-align: center;
+      padding: 40px
+    }
+
+    /* 3D CANVAS */
+    #canvas3d {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: var(--bg);
+      border-radius: 4px;
+      cursor: grab
+    }
+
+    #canvas3d:active {
+      cursor: grabbing
+    }
+
+    .scene-info {
+      font-size: 11px;
+      color: var(--text2);
+      padding: 8px 0;
+      font-family: var(--mono)
+    }
+
+    .scene-info span {
+      color: var(--accent-light)
+    }
+
+    /* STATS */
+    .stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px
+    }
+
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 12px
+    }
+
+    .stat-val {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent-light);
+      font-family: var(--mono)
+    }
+
+    .stat-label {
+      color: var(--text2);
+      font-size: 11px;
+      margin-top: 2px
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg)
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text3)
+    }
+
+    .btn-toggle-msgs {
+      background: transparent;
+      color: var(--text3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--sans)
+    }
+
+    .btn-toggle-msgs:hover {
+      color: var(--text);
+      border-color: var(--text2)
+    }
+
+    .btn-toggle-msgs.active {
+      color: var(--accent-light);
+      border-color: var(--accent-dim);
+      background: rgba(70, 130, 180, .1)
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <h1>DSL 3D Scene Analyzer</h1>
+    <span class="sub">Léxico → Sintáctico → Semántico → Ejecución 3D</span>
+  </div>
+  <div class="main">
+    <div class="editor-panel">
+      <div class="toolbar">
+        <select id="examples">
+          <option value="">— Seleccionar ejemplo —</option>
+          <option value="nuevo">Nuevo (En blanco)</option>
+        </select>
+        <button class="btn-run" id="btnRun" onclick="runAnalysis()">▶ Analizar</button>
+        <button class="btn-clear" id="btnClear" onclick="document.getElementById('code').value=''; updateLineInfo();"
+          style="background:var(--card);color:var(--text);border:1px solid var(--border)!important;font-weight:500;transition:all .15s;"
+          onmouseover="this.style.background='var(--surface)'; this.style.borderColor='var(--text3)'"
+          onmouseout="this.style.background='var(--card)'; this.style.borderColor='var(--border)'">Vaciar</button>
+      </div>
+      <textarea id="code" spellcheck="false" placeholder="Escribe o pega tu código DSL aquí..."></textarea>
+      <div class="line-info" id="lineInfo">Línea 1, Col 1</div>
+    </div>
+    <div class="results-panel">
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="lexico" onclick="switchTab('lexico')">Léxico <span
+            class="dot dot-none"></span></div>
+        <div class="tab" data-tab="sintactico" onclick="switchTab('sintactico')">Sintáctico <span
+            class="dot dot-none"></span></div>
+        <div class="tab" data-tab="semantico" onclick="switchTab('semantico')">Semántico <span
+            class="dot dot-none"></span></div>
+        <div class="tab" data-tab="ejecucion" onclick="switchTab('ejecucion')">Ejecución 3D <span
+            class="dot dot-none"></span></div>
+        <div style="flex:1"></div>
+        <div style="display:flex;align-items:center;padding-right:14px;">
+          <button id="btnToggleGrid" class="btn-toggle-msgs" onclick="toggleGrid()">Ocultar cuadrícula</button>
+        </div>
+      </div>
+      <div class="tab-content">
+        <div class="tab-pane active" id="pane-lexico">
+          <div class="placeholder">Ejecuta el análisis para ver los tokens</div>
+        </div>
+        <div class="tab-pane" id="pane-sintactico">
+          <div class="placeholder">Ejecuta el análisis para ver el resultado sintáctico</div>
+        </div>
+        <div class="tab-pane" id="pane-semantico">
+          <div class="placeholder">Ejecuta el análisis para ver errores semánticos</div>
+        </div>
+        <div class="tab-pane" id="pane-ejecucion">
+          <div class="placeholder">La escena 3D se renderiza cuando las 3 fases pasan correctamente</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════
+    //  TOKENS — port directo de los #define del C++
+    // ═══════════════════════════════════════════════════════════════
+    const CAMARA = 0, ENTIDAD = 1, OBJETO = 2, COLISION = 3, SONIDO = 4, COMPORTAMIENTO = 5,
+      CONTROLES = 6, FISICAS = 7, ANIMACION = 8, ESCENA = 9, APARENTESIS = 10, CPARENTESIS = 11,
+      ALLAVE = 12, CLLAVE = 13, IGUAL = 14, PCOMA = 15, COMA = 16, DOS_PUNTOS = 17, PUNTO = 18,
+      CORCHETE_ABRE = 19, CORCHETE_CIERRA = 20, VAR = 21, NUM = 22, CADENA = 23, BOOLEANO = 24,
+      VECTOR = 25, NUM_CON_SUFIJO = 26, CUBO = 27, ESFERA = 28, CILINDRO = 29, CONO = 30,
+      PIRAMIDE = 31, FORMA = 32, POSICION = 33, COLOR = 34, MATERIAL = 35, TIPO = 36, REBOTE = 37,
+      RUGOSIDAD = 38, MASA = 39, ESTATICA = 40, GRAVEDAD = 41, ILUMINACION = 42, DISTANCIA = 43,
+      ANGULO = 44, MODO = 45, OBJETIVO = 46, EFECTOS = 47, VIBRACION_COLISION = 48,
+      ZOOM_DINAMICO = 49, TIPO_ANIM = 50, AMPLITUD = 51, FRECUENCIA = 52, LOOP = 53, EJE = 54,
+      DURACION = 55, FACTOR = 56, EASING = 57, CADA = 58, RADIO = 59, VELOCIDAD = 60, COLORES = 61,
+      INTENSIDAD = 62, REPRODUCIR = 63, APLICAR_FUERZA = 64, APLICAR_IMPULSO = 65,
+      RECARGAR_ESCENA = 66, PERDER_VIDA = 67, SUMAR_PUNTAJE = 68, DESTRUIR = 69,
+      REPRODUCIR_SONIDO = 70, SPAWN_EFECTO = 71, ANIMACION_TEMBLOR = 72, RECOLECTAR = 73,
+      RESTAR_VIDA = 74, ACTIVAR_POWERUP = 75, CAMBIAR_COLOR = 76, SET_POSICION = 77,
+      APLICAR_FUERZA_HACIA = 78, DESTRUIR_SI = 79, PATRON = 80, PUNTOS = 81, ACTIVAR_SI = 82,
+      VELOCIDAD_MAX = 83, COOLDOWN = 84, DANO = 85, FISICA_SIMULADA = 86,
+      GRAVEDAD_INFLUENCIA = 87, FLOTAR = 88, ROTAR = 89, PISAR = 90, VOLUMEN = 91, PASO = 92,
+      ATAQUE = 93, MUERTE = 94, AL_COLISIONAR_CON = 95, AL_COLISIONAR = 96, AL_OTRO = 97,
+      TW = 98, TS = 99, TA = 100, TD = 101, ESPACIO = 102, SHIFT = 103, TR = 104, SI = 105, SINO = 106,
+      TO = 107, TY = 108, OP_MAYOR = 109, OP_MENOR = 110, OP_MAYOR_IGUAL = 111,
+      OP_MENOR_IGUAL = 112, OP_IGUAL_IGUAL = 113, OP_DIFERENTE = 114, INICIAR = 115,
+      ACTIVAR_GRAVEDAD = 116, ACTIVAR_COLISIONES = 117, ACTIVAR_VIENTO = 118,
+      MOSTRAR_PUNTAJE = 119, MOSTRAR_VIDAS = 120, MOSTRAR_POWERUP = 121,
+      REPRODUCIR_MUSICA = 122, EFECTO_CAMARA = 123, DISTANCIA_FUNC = 124, AUDIO = 125,
+      HUD = 126, SLASH = 127, FIN = 666, ERROR = 999;
+
+    const TOKEN_NAMES = {};
+    (function () {
+      const n = {
+        0: 'CAMARA', 1: 'ENTIDAD', 2: 'OBJETO', 3: 'COLISION', 4: 'SONIDO', 5: 'COMPORTAMIENTO',
+        6: 'CONTROLES', 7: 'FISICAS', 8: 'ANIMACION', 9: 'ESCENA', 10: '(', 11: ')', 12: '{', 13: '}', 14: '=',
+        15: ';', 16: ',', 17: ':', 18: '.', 19: '[', 20: ']', 21: 'VAR', 22: 'NUM', 23: 'CADENA', 24: 'BOOL',
+        25: 'VECTOR', 26: 'NUM_SUF', 27: 'CUBO', 28: 'ESFERA', 29: 'CILINDRO', 30: 'CONO', 31: 'PIRAMIDE',
+        32: 'FORMA', 33: 'POSICION', 34: 'COLOR', 35: 'MATERIAL', 36: 'TIPO', 37: 'REBOTE', 38: 'RUGOSIDAD',
+        39: 'MASA', 40: 'ESTATICA', 41: 'GRAVEDAD', 42: 'ILUMINACION', 43: 'DISTANCIA', 44: 'ANGULO',
+        45: 'MODO', 46: 'OBJETIVO', 47: 'EFECTOS', 48: 'VIBR_COL', 49: 'ZOOM_DIN', 50: 'TIPO_ANIM',
+        51: 'AMPLITUD', 52: 'FRECUENCIA', 53: 'LOOP', 54: 'EJE', 55: 'DURACION', 56: 'FACTOR', 57: 'EASING',
+        58: 'CADA', 59: 'RADIO', 60: 'VELOCIDAD', 61: 'COLORES', 62: 'INTENSIDAD', 63: 'REPRODUCIR',
+        64: 'APL_FUERZA', 65: 'APL_IMPULSO', 66: 'RECARG_ESC', 67: 'PERD_VIDA', 68: 'SUM_PUNT',
+        69: 'DESTRUIR', 70: 'REPR_SONIDO', 71: 'SPAWN_EF', 72: 'ANIM_TEMBLOR', 73: 'RECOLECTAR',
+        74: 'REST_VIDA', 75: 'ACT_POWERUP', 76: 'CAMB_COLOR', 77: 'SET_POS', 78: 'APL_FUERZA_HACIA',
+        79: 'DESTR_SI', 80: 'PATRON', 81: 'PUNTOS', 82: 'ACTIVAR_SI', 83: 'VEL_MAX', 84: 'COOLDOWN',
+        85: 'DANO', 86: 'FIS_SIM', 87: 'GRAV_INFL', 88: 'FLOTAR', 89: 'ROTAR', 90: 'PISAR', 91: 'VOLUMEN',
+        92: 'PASO', 93: 'ATAQUE', 94: 'MUERTE', 95: 'AL_COL_CON', 96: 'AL_COL', 97: 'AL_OTRO',
+        98: 'W', 99: 'S', 100: 'A', 101: 'D', 102: 'ESPACIO', 103: 'SHIFT', 104: 'R', 105: 'SI', 106: 'SINO',
+        107: 'O', 108: 'Y', 109: '>', 110: '<', 111: '>=', 112: '<=', 113: '==', 114: '!=', 115: 'INICIAR',
+        116: 'ACT_GRAV', 117: 'ACT_COLS', 118: 'ACT_VIENTO', 119: 'MOST_PUNT', 120: 'MOST_VIDAS',
+        121: 'MOST_POWER', 122: 'REPR_MUSICA', 123: 'EF_CAMARA', 124: 'DIST_FUNC', 125: 'AUDIO',
+        126: 'HUD', 127: '/', 666: 'FIN', 999: 'ERROR'
+      };
+      Object.assign(TOKEN_NAMES, n);
+    })();
+
+    // ═══════════════════════════════════════════════════════════════
+    //  TABLA DE PALABRAS CLAVE
+    // ═══════════════════════════════════════════════════════════════
+    const KEYWORDS = {
+      camara: CAMARA, entidad: ENTIDAD, objeto: OBJETO, colision: COLISION, sonido: SONIDO,
+      comportamiento: COMPORTAMIENTO, controles: CONTROLES, fisicas: FISICAS, animacion: ANIMACION,
+      escena: ESCENA, cubo: CUBO, esfera: ESFERA, cilindro: CILINDRO, cono: CONO, piramide: PIRAMIDE,
+      forma: FORMA, posicion: POSICION, color: COLOR, material: MATERIAL, tipo: TIPO, rebote: REBOTE,
+      rugosidad: RUGOSIDAD, masa: MASA, estatica: ESTATICA, gravedad: GRAVEDAD, iluminacion: ILUMINACION,
+      distancia: DISTANCIA, angulo: ANGULO, modo: MODO, objetivo: OBJETIVO, efectos: EFECTOS,
+      vibracion_colision: VIBRACION_COLISION, zoom_dinamico: ZOOM_DINAMICO, amplitud: AMPLITUD,
+      frecuencia: FRECUENCIA, loop: LOOP, eje: EJE, duracion: DURACION, factor: FACTOR, easing: EASING,
+      cada: CADA, radio: RADIO, velocidad: VELOCIDAD, colores: COLORES, intensidad: INTENSIDAD,
+      reproducir: REPRODUCIR, aplicar_fuerza: APLICAR_FUERZA, aplicar_impulso: APLICAR_IMPULSO,
+      recargar_escena: RECARGAR_ESCENA, perder_vida: PERDER_VIDA, sumar_puntaje: SUMAR_PUNTAJE,
+      destruir: DESTRUIR, reproducir_sonido: REPRODUCIR_SONIDO, spawn_efecto: SPAWN_EFECTO,
+      animacion_temblor: ANIMACION_TEMBLOR, recolectar: RECOLECTAR, restar_vida: RESTAR_VIDA,
+      activar_powerup: ACTIVAR_POWERUP, cambiar_color: CAMBIAR_COLOR, set_posicion: SET_POSICION,
+      aplicar_fuerza_hacia: APLICAR_FUERZA_HACIA, destruir_si: DESTRUIR_SI,
+      efecto: EFECTO_CAMARA, animacion_camara: EFECTO_CAMARA,
+      patron: PATRON, puntos: PUNTOS, activar_si: ACTIVAR_SI, velocidad_max: VELOCIDAD_MAX,
+      cooldown: COOLDOWN, dano: DANO, fisica_simulada: FISICA_SIMULADA,
+      gravedad_influencia: GRAVEDAD_INFLUENCIA, flotar: FLOTAR, rotar: ROTAR,
+      pisar: PISAR, volumen: VOLUMEN, paso: PASO, ataque: ATAQUE, muerte: MUERTE,
+      al_colisionar_con: AL_COLISIONAR_CON, al_colisionar: AL_COLISIONAR, al_otro: AL_OTRO,
+      W: TW, S: TS, A: TA, D: TD, ESPACIO: ESPACIO, SHIFT: SHIFT, R: TR,
+      si: SI, sino: SINO, o: TO, y: TY,
+      iniciar: INICIAR, activar_gravedad: ACTIVAR_GRAVEDAD, activar_colisiones: ACTIVAR_COLISIONES,
+      activar_viento: ACTIVAR_VIENTO, mostrar_puntaje: MOSTRAR_PUNTAJE, mostrar_vidas: MOSTRAR_VIDAS,
+      mostrar_powerup_timer: MOSTRAR_POWERUP, reproducir_musica: REPRODUCIR_MUSICA,
+      audio: AUDIO, hud: HUD
+    };
+
+    // ═══════════════════════════════════════════════════════════════
+    //  ANALIZADOR LÉXICO
+    // ═══════════════════════════════════════════════════════════════
+    class AnalizadorLexico {
+      constructor(src) {
+        this.src = src; this.i = 0; this.linea = 1; this.col = 1;
+        this.tokens = []; this.tokensInfo = []; this.error = null;
+      }
+      peek() { return this.i < this.src.length ? this.src[this.i] : '\0'; }
+      advance() {
+        const c = this.src[this.i++];
+        if (c === '\n') { this.linea++; this.col = 1; } else this.col++;
+        return c;
+      }
+      skipWS() {
+        while (this.i < this.src.length) {
+          const c = this.peek();
+          if (c === ' ' || c === '\t' || c === '\r' || c === '\n') this.advance();
+          else if (c === '#') { while (this.i < this.src.length && this.peek() !== '\n') this.i++; }
+          else break;
+        }
+      }
+      getToken() {
+        this.skipWS();
+        if (this.i >= this.src.length) return { id: FIN, lex: '', ln: this.linea };
+        const ln = this.linea;
+        const s = this.src;
+        // Multi-char operators
+        if (s[this.i] === '>' && s[this.i + 1] === '=') { this.i += 2; this.col += 2; return { id: OP_MAYOR_IGUAL, lex: '>=', ln }; }
+        if (s[this.i] === '<' && s[this.i + 1] === '=') { this.i += 2; this.col += 2; return { id: OP_MENOR_IGUAL, lex: '<=', ln }; }
+        if (s[this.i] === '=' && s[this.i + 1] === '=') { this.i += 2; this.col += 2; return { id: OP_IGUAL_IGUAL, lex: '==', ln }; }
+        if (s[this.i] === '!' && s[this.i + 1] === '=') { this.i += 2; this.col += 2; return { id: OP_DIFERENTE, lex: '!=', ln }; }
+        // Vector [...]
+        if (s[this.i] === '[') {
+          let depth = 0, buf = '';
+          do {
+            if (s[this.i] === '[') depth++;
+            else if (s[this.i] === ']') depth--;
+            if (s[this.i] === '\n') { this.linea++; this.col = 1; } else this.col++;
+            buf += s[this.i++];
+          } while (depth > 0 && this.i < s.length);
+          return { id: VECTOR, lex: buf, ln };
+        }
+        // Identifier / keyword
+        if (/[a-zA-Z_]/.test(s[this.i])) {
+          let buf = '';
+          while (this.i < s.length && /[a-zA-Z0-9_]/.test(s[this.i])) { buf += s[this.i++]; this.col++; }
+          if (buf === 'true' || buf === 'false') return { id: BOOLEANO, lex: buf, ln };
+          if (KEYWORDS.hasOwnProperty(buf)) return { id: KEYWORDS[buf], lex: buf, ln };
+          return { id: VAR, lex: buf, ln };
+        }
+        // Number (with optional suffix)
+        if (/[0-9]/.test(s[this.i]) || (s[this.i] === '.' && this.i + 1 < s.length && /[0-9]/.test(s[this.i + 1]))) {
+          let buf = '', hasDot = false;
+          while (this.i < s.length && (/[0-9]/.test(s[this.i]) || s[this.i] === '.')) {
+            if (s[this.i] === '.') { if (hasDot) break; hasDot = true; }
+            buf += s[this.i++]; this.col++;
+          }
+          if (this.i < s.length && /[a-zA-Z]/.test(s[this.i])) {
+            while (this.i < s.length && /[a-zA-Z0-9/_]/.test(s[this.i])) { buf += s[this.i++]; this.col++; }
+            return { id: NUM_CON_SUFIJO, lex: buf, ln };
+          }
+          return { id: NUM, lex: buf, ln };
+        }
+        // String
+        if (s[this.i] === '"') {
+          this.i++; this.col++; let buf = '';
+          while (this.i < s.length && s[this.i] !== '"') { buf += s[this.i++]; this.col++; }
+          if (this.i < s.length) { this.i++; this.col++; }
+          return { id: CADENA, lex: buf, ln };
+        }
+        // Single-char symbols
+        const syms = {
+          '(': APARENTESIS, ')': CPARENTESIS, '{': ALLAVE, '}': CLLAVE, '=': IGUAL,
+          ';': PCOMA, ',': COMA, ':': DOS_PUNTOS, '.': PUNTO, '>': OP_MAYOR, '<': OP_MENOR, '/': SLASH
+        };
+        if (syms.hasOwnProperty(s[this.i])) {
+          const c = s[this.i]; this.i++; this.col++;
+          return { id: syms[c], lex: c, ln };
+        }
+        // Error
+        const c = s[this.i]; this.i++; this.col++;
+        return { id: ERROR, lex: c, ln };
+      }
+      analizar() {
+        this.tokens = []; this.tokensInfo = []; this.error = null;
+        while (true) {
+          const t = this.getToken();
+          if (t.id === ERROR) { this.error = `Carácter no reconocido '${t.lex}' en línea ${t.ln}`; return false; }
+          this.tokens.push(t.id);
+          this.tokensInfo.push({ id: t.id, lexema: t.lex, linea: t.ln });
+          if (t.id === FIN) break;
+        }
+        return true;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  ANALIZADOR SINTÁCTICO — Autómata Finito Modular
+    // ═══════════════════════════════════════════════════════════════
+    class AnalizadorSintactico {
+      constructor() {
+        this.modoActual = 'INICIO';
+        this.estadoActual = 0;
+        this.estadoRetorno = 0;
+        this.animParentState = 32;
+        this.omitirHastaPComa = false;
+        this.errorMsg = '';
+        this.errorToken = -1;
+        this._buildModulos();
+      }
+
+      _buildModulos() {
+        this.modulos = {};
+        const M = this.modulos;
+
+        // Helper: build transition map
+        function mod(name, initial, finals, triples) {
+          const t = {};
+          for (const [f, tok, to] of triples) {
+            if (!t[f]) t[f] = {};
+            t[f][tok] = to;
+          }
+          M[name] = { initial, finals: new Set(finals), trans: t };
+        }
+
+        // ===== INICIO =====
+        mod('INICIO', 0, [0], [
+          [0, CAMARA, 1], [0, ENTIDAD, 2], [0, ESCENA, 3], [0, GRAVEDAD, 4], [0, ILUMINACION, 5],
+          [4, DOS_PUNTOS, 14], [5, DOS_PUNTOS, 14],
+          [14, VECTOR, 15], [14, NUM, 15],
+          [15, PCOMA, 0]
+        ]);
+
+        // ===== CAMARA =====
+        mod('CAMARA', 11, [0], [
+          [11, ALLAVE, 11], [11, POSICION, 12], [11, OBJETIVO, 12], [11, DISTANCIA, 12],
+          [11, ANGULO, 12], [11, MODO, 12], [11, EFECTOS, 13], [11, CLLAVE, 0],
+          [12, DOS_PUNTOS, 14],
+          [13, DOS_PUNTOS, 136], [13, ALLAVE, 16],
+          [136, ALLAVE, 16],
+          [14, VECTOR, 15], [14, CADENA, 15], [14, VAR, 15], [14, NUM, 15], [14, NUM_CON_SUFIJO, 15],
+          [16, VIBRACION_COLISION, 17], [16, ZOOM_DINAMICO, 17], [16, CLLAVE, 11],
+          [17, DOS_PUNTOS, 18],
+          [18, BOOLEANO, 15]
+        ]);
+
+        // ===== ENTIDAD =====
+        const eT = [];
+        const push = (f, t, to) => eT.push([f, t, to]);
+        const pushM = (f, toks, to) => toks.forEach(t => eT.push([f, t, to]));
+
+        push(21, VAR, 22); push(22, ALLAVE, 23);
+        pushM(23, [OBJETO], 30); pushM(23, [COLISION], 40); pushM(23, [SONIDO], 50);
+        pushM(23, [COMPORTAMIENTO], 60); pushM(23, [CONTROLES], 70); pushM(23, [FISICAS], 8);
+        push(23, CLLAVE, 0);
+        // Generic prop:val
+        push(12, DOS_PUNTOS, 14);
+        pushM(14, [VECTOR, CADENA, VAR, NUM, NUM_CON_SUFIJO, BOOLEANO], 15);
+        // OBJETO
+        push(30, CADENA, 31); push(31, ALLAVE, 32);
+        pushM(32, [FORMA], 33); pushM(32, [POSICION, COLOR, MATERIAL], 12);
+        push(32, ANIMACION, 34); push(32, CLLAVE, 23);
+        push(33, DOS_PUNTOS, 35);
+        pushM(35, [CUBO, ESFERA, CILINDRO, CONO, PIRAMIDE], 36);
+        push(36, APARENTESIS, 37);
+        pushM(37, [NUM, NUM_CON_SUFIJO], 38);
+        push(38, COMA, 39); push(38, CPARENTESIS, 15);
+        pushM(39, [NUM, NUM_CON_SUFIJO], 38);
+        // ANIMACION
+        push(34, CADENA, 300); push(300, ALLAVE, 301);
+        const animP = [TIPO, TIPO_ANIM, AMPLITUD, FRECUENCIA, LOOP, EJE, DURACION, FACTOR,
+          EASING, CADA, RADIO, VELOCIDAD, COLORES, INTENSIDAD, ANGULO, DISTANCIA];
+        pushM(301, animP, 12);
+        push(301, APLICAR_IMPULSO, 45); push(301, APLICAR_FUERZA, 45);
+        push(301, ACTIVAR_SI, 500);
+        // COLISION
+        push(40, ALLAVE, 41);
+        pushM(41, [FORMA], 33); pushM(41, [TIPO, MATERIAL, REBOTE, RUGOSIDAD], 12);
+        push(41, AL_COLISIONAR_CON, 42); push(41, AL_COLISIONAR, 411); push(41, CLLAVE, 23);
+        push(411, DOS_PUNTOS, 412); push(411, ALLAVE, 44); push(412, ALLAVE, 44);
+        push(42, VAR, 43); push(42, CADENA, 43); push(43, ALLAVE, 44);
+        // Actions from state 44
+        const acciones = [APLICAR_IMPULSO, REPRODUCIR_SONIDO, PERDER_VIDA, SUMAR_PUNTAJE,
+          SPAWN_EFECTO, ANIMACION_TEMBLOR, RESTAR_VIDA, ACTIVAR_POWERUP, CAMBIAR_COLOR,
+          REPRODUCIR_MUSICA, EFECTO_CAMARA, APLICAR_FUERZA, APLICAR_FUERZA_HACIA, SET_POSICION];
+        pushM(44, acciones, 45);
+        push(44, DESTRUIR, 200); push(44, RECOLECTAR, 200); // zero-arg override
+        push(44, DESTRUIR_SI, 501); push(44, VAR, 402); push(44, CAMARA, 402); push(44, CLLAVE, 41);
+        push(402, PUNTO, 403);
+        pushM(403, [ACTIVAR_POWERUP, CAMBIAR_COLOR, EFECTO_CAMARA, VAR], 45);
+        // Action hub (state 45)
+        push(45, APARENTESIS, 46);
+        pushM(45, [CADENA, NUM, NUM_CON_SUFIJO, VECTOR], 490);
+        push(45, VAR, 45); push(45, PUNTO, 400);
+        pushM(46, [VECTOR, NUM, NUM_CON_SUFIJO, CADENA, VAR], 47);
+        push(47, CPARENTESIS, 15); push(47, COMA, 48);
+        pushM(48, [VECTOR, NUM, NUM_CON_SUFIJO, CADENA, BOOLEANO, VAR], 47);
+        push(400, VAR, 401); push(401, APARENTESIS, 46);
+        // SONIDO
+        push(50, ALLAVE, 51);
+        pushM(51, [PISAR, VOLUMEN, PASO, ATAQUE, MUERTE], 12); push(51, CLLAVE, 23);
+        // COMPORTAMIENTO
+        push(60, ALLAVE, 61);
+        pushM(61, [FISICA_SIMULADA, GRAVEDAD_INFLUENCIA, FLOTAR, ROTAR, VAR], 12);
+        push(61, PATRON, 62); push(61, ATAQUE, 63); push(61, CLLAVE, 23);
+        push(62, CADENA, 64); push(64, ALLAVE, 65);
+        push(65, ACTIVAR_SI, 500);
+        pushM(65, [APLICAR_FUERZA, APLICAR_FUERZA_HACIA], 45);
+        pushM(65, [VELOCIDAD_MAX, PUNTOS, VELOCIDAD, LOOP], 12); push(65, CLLAVE, 61);
+        push(63, ALLAVE, 66);
+        pushM(66, [TIPO, DANO, COOLDOWN], 12); push(66, ANIMACION, 34); push(66, CLLAVE, 61);
+        // CONTROLES
+        push(70, ALLAVE, 71);
+        pushM(71, [TW, TS, TA, TD, ESPACIO, SHIFT, TR], 72); push(71, CLLAVE, 23);
+        push(72, DOS_PUNTOS, 73);
+        pushM(73, [APLICAR_FUERZA, APLICAR_IMPULSO, RECARGAR_ESCENA], 45);
+        // FISICAS
+        push(8, ALLAVE, 81); pushM(81, [MASA, ESTATICA], 12); push(81, CLLAVE, 23);
+        // State 200 (destruir/recolectar zero-arg → expects PCOMA handled in verificarToken)
+
+        mod('ENTIDAD', 21, [0], eT);
+
+        // ===== ESCENA =====
+        const sT = [];
+        const sp = (f, t, to) => sT.push([f, t, to]);
+        const spm = (f, toks, to) => toks.forEach(t => sT.push([f, t, to]));
+
+        sp(81, VAR, 82); sp(82, ALLAVE, 83);
+        sp(83, CAMARA, 90); sp(83, FISICAS, 91); sp(83, VAR, 985);
+        sp(83, ANIMACION, 86); sp(83, AUDIO, 87); sp(83, HUD, 88);
+        spm(83, [MOSTRAR_PUNTAJE, MOSTRAR_VIDAS, MOSTRAR_POWERUP, REPRODUCIR_MUSICA, SET_POSICION], 45);
+        sp(83, CLLAVE, 0);
+        sp(985, VAR, 85); sp(985, PUNTO, 986);
+        spm(986, [SET_POSICION, INICIAR, ACTIVAR_GRAVEDAD, ACTIVAR_COLISIONES, ACTIVAR_VIENTO,
+          ACTIVAR_POWERUP, CAMBIAR_COLOR, EFECTO_CAMARA, REPRODUCIR_MUSICA], 45);
+        sp(90, PUNTO, 90); sp(90, INICIAR, 45);
+        sp(91, PUNTO, 91);
+        spm(91, [ACTIVAR_GRAVEDAD, ACTIVAR_COLISIONES, ACTIVAR_VIENTO], 45);
+        sp(85, VAR, 92); sp(85, PCOMA, 83); sp(85, COMA, 93);
+        sp(92, PCOMA, 83); sp(92, COMA, 93); sp(93, VAR, 92);
+        sp(86, PUNTO, 94); sp(94, REPRODUCIR, 45);
+        sp(87, PUNTO, 95); sp(95, REPRODUCIR_MUSICA, 45);
+        // Action hub (shared states for escena)
+        sp(45, APARENTESIS, 46);
+        spm(45, [CADENA, NUM, NUM_CON_SUFIJO, VECTOR], 490);
+        spm(46, [VECTOR, NUM, NUM_CON_SUFIJO, CADENA, VAR, BOOLEANO], 47);
+        sp(47, CPARENTESIS, 15); sp(47, COMA, 48); sp(47, PUNTO, 470); sp(470, VAR, 47);
+        spm(48, [VECTOR, NUM, NUM_CON_SUFIJO, CADENA, BOOLEANO, VAR], 47);
+        sp(48, LOOP, 4700); sp(48, VOLUMEN, 4700); sp(4700, IGUAL, 48);
+        sp(88, PUNTO, 96);
+        spm(96, [MOSTRAR_PUNTAJE, MOSTRAR_VIDAS, MOSTRAR_POWERUP], 45);
+
+        mod('ESCENA', 81, [0], sT);
+
+        // ===== VECTOR =====
+        mod('VECTOR_MOD', 100, [105], [
+          [100, CORCHETE_ABRE, 101],
+          [101, NUM, 102], [101, NUM_CON_SUFIJO, 102], [101, VAR, 102], [101, CORCHETE_ABRE, 103],
+          [102, COMA, 104], [102, CORCHETE_CIERRA, 105],
+          [103, NUM, 102], [103, NUM_CON_SUFIJO, 102], [103, VAR, 102], [103, CORCHETE_CIERRA, 105],
+          [104, NUM, 102], [104, NUM_CON_SUFIJO, 102], [104, VAR, 102], [104, CORCHETE_ABRE, 103]
+        ]);
+      }
+
+      transitar(modo, estado, token) {
+        const m = this.modulos[modo];
+        if (m && m.trans[estado] && m.trans[estado][token] !== undefined)
+          return m.trans[estado][token];
+        return ERROR;
+      }
+
+      esFinal(modo, estado) {
+        return this.modulos[modo] && this.modulos[modo].finals.has(estado);
+      }
+
+      cambiarModulo(token) {
+        if (token === CAMARA) { this.modoActual = 'CAMARA'; this.estadoActual = 11; return 11; }
+        if (token === ENTIDAD) { this.modoActual = 'ENTIDAD'; this.estadoActual = 21; return 21; }
+        if (token === ESCENA) { this.modoActual = 'ESCENA'; this.estadoActual = 81; return 81; }
+        if (token === CORCHETE_ABRE) { this.modoActual = 'VECTOR_MOD'; this.estadoActual = 100; return 100; }
+        return ERROR;
+      }
+
+      registrarRetorno(prev, nuevo) {
+        if (nuevo === 12) this.estadoRetorno = prev;
+        else if (nuevo === 33) this.estadoRetorno = prev;
+        else if (nuevo === 17) this.estadoRetorno = prev;
+        else if (nuevo === 14 && (prev === 4 || prev === 5)) this.estadoRetorno = 0;
+        else if (nuevo === 45) {
+          if (prev === 73 || prev === 71) this.estadoRetorno = 71;
+          else if (prev === 44 || prev === 403) this.estadoRetorno = 44;
+          else if (prev === 65) this.estadoRetorno = 65;
+          else if (prev === 301) this.estadoRetorno = 301;
+          else if (prev === 986) this.estadoRetorno = 83;
+          else if (this.modoActual === 'ESCENA') this.estadoRetorno = 83;
+          else if (this.modoActual === 'CAMARA') this.estadoRetorno = 11;
+        }
+        else if (nuevo === 34) this.animParentState = prev;
+        else if (nuevo === 500) this.estadoRetorno = prev;
+        else if (nuevo === 15 && (prev === 90 || prev === 91)) this.estadoRetorno = 83;
+      }
+
+      verificarToken(token) {
+        if (token === FIN) return this.esFinal(this.modoActual, this.estadoActual) ? 0 : ERROR;
+
+        if (this.omitirHastaPComa) {
+          if (token === PCOMA) { this.omitirHastaPComa = false; this.estadoActual = this.estadoRetorno; }
+          return this.estadoActual;
+        }
+
+        if (this.modoActual !== 'INICIO' && this.esFinal(this.modoActual, this.estadoActual)) {
+          this.modoActual = 'INICIO'; this.estadoActual = 0;
+        }
+
+        // Animation block close
+        if (this.estadoActual === 301 && token === CLLAVE) {
+          this.estadoActual = this.animParentState; return this.estadoActual;
+        }
+        // destruir_si skip
+        if (this.estadoActual === 501) {
+          if (token === PCOMA) this.estadoActual = 44;
+          return this.estadoActual;
+        }
+        // activar_si skip
+        if (this.estadoActual === 500) {
+          if (token === PCOMA) this.estadoActual = this.estadoRetorno;
+          return this.estadoActual;
+        }
+        // Property value end
+        if (this.estadoActual === 15 && token === PCOMA) {
+          this.estadoActual = this.estadoRetorno; return this.estadoActual;
+        }
+        // Zero-arg action end
+        if (this.estadoActual === 45 && token === PCOMA) {
+          this.estadoActual = this.estadoRetorno; return this.estadoActual;
+        }
+        // Bare-arg end
+        if (this.estadoActual === 490 && token === PCOMA) {
+          this.estadoActual = this.estadoRetorno; return this.estadoActual;
+        }
+        // Bare-arg + si/modo/al_otro [FIX]
+        if (this.estadoActual === 490 && (token === SI || token === MODO || token === AL_OTRO)) {
+          if (token === SI || token === MODO) this.omitirHastaPComa = true;
+          return this.estadoActual;
+        }
+        // Paren arg end
+        if (this.estadoActual === 47 && token === PCOMA) {
+          this.estadoActual = this.estadoRetorno; return this.estadoActual;
+        }
+        // destruir/recolectar zero-arg end
+        if (this.estadoActual === 200 && token === PCOMA) {
+          this.estadoActual = 44; return 44;
+        }
+        // si conditional after value
+        if (this.estadoActual === 15 && token === SI) {
+          this.omitirHastaPComa = true; return this.estadoActual;
+        }
+        // al_otro / modo / si after paren args
+        if (this.estadoActual === 47 && (token === AL_OTRO || token === MODO || token === SI)) {
+          if (token === MODO || token === SI) this.omitirHastaPComa = true;
+          return this.estadoActual;
+        }
+
+        const prev = this.estadoActual;
+        let nuevo = this.transitar(this.modoActual, this.estadoActual, token);
+
+        // Empty parens
+        if (nuevo === ERROR && this.estadoActual === 46) {
+          if (token === CPARENTESIS) {
+            this.estadoActual = 15;
+            if (this.modoActual === 'ESCENA') this.estadoRetorno = 83;
+            else if (this.modoActual === 'ENTIDAD') this.estadoRetorno = 44;
+            return 15;
+          }
+          return this.estadoActual;
+        }
+
+        if (nuevo === ERROR) {
+          const mr = this.cambiarModulo(token);
+          if (mr !== ERROR) return this.verificarToken(token);
+          return ERROR;
+        }
+
+        // Module switch from INICIO
+        if (this.modoActual === 'INICIO') {
+          if (nuevo === 1) { this.modoActual = 'CAMARA'; nuevo = 11; }
+          else if (nuevo === 2) { this.modoActual = 'ENTIDAD'; nuevo = 21; }
+          else if (nuevo === 3) { this.modoActual = 'ESCENA'; nuevo = 81; }
+        }
+
+        if (prev === 47 && token === SI) {
+          this.omitirHastaPComa = true; return this.estadoActual;
+        }
+
+        this.registrarRetorno(prev, nuevo);
+        this.estadoActual = nuevo;
+        return nuevo;
+      }
+
+      analizar(tokenIds) {
+        this.modoActual = 'INICIO'; this.estadoActual = 0; this.estadoRetorno = 0;
+        this.animParentState = 32; this.omitirHastaPComa = false;
+        this.errorMsg = ''; this.errorToken = -1;
+
+        for (let i = 0; i < tokenIds.length; i++) {
+          const t = tokenIds[i];
+          if (t === FIN) break;
+          const r = this.verificarToken(t);
+          if (r === ERROR) {
+            this.errorToken = i;
+            this.errorMsg = `Token ${i}: ${TOKEN_NAMES[t] || t} (id=${t}) — Módulo: ${this.modoActual}, Estado: ${this.estadoActual}`;
+            return false;
+          }
+        }
+        if (!this.esFinal(this.modoActual, this.estadoActual)) {
+          this.errorMsg = `No se alcanzó estado final — Módulo: ${this.modoActual}, Estado: ${this.estadoActual}`;
+          return false;
+        }
+        return true;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  ANALIZADOR SEMÁNTICO — Acumulador de errores
+    // ═══════════════════════════════════════════════════════════════
+    class AnalizadorSemantico {
+      constructor() { this.errores = []; this.instancias = new Set(); }
+
+      componentes(vec) {
+        const out = []; let depth = 0, cur = '';
+        for (let k = 0; k < vec.length; k++) {
+          const c = vec[k];
+          if (c === '[') { depth++; if (depth === 1) continue; }
+          if (c === ']') { depth--; if (depth === 0) { const t = cur.trim(); if (t) out.push(t); cur = ''; continue; } }
+          if (c === ',' && depth === 1) { out.push(cur.trim()); cur = ''; continue; }
+          if (depth >= 1) cur += c;
+        }
+        return out;
+      }
+
+      esNumero(s) { if (!s || !s.trim()) return null; const v = parseFloat(s); return isNaN(v) ? null : v; }
+      esSubVector(s) { return s && s[0] === '['; }
+
+      aridadVector(p) {
+        if ([POSICION, GRAVEDAD, ILUMINACION, COLOR, OBJETIVO].includes(p)) return 3;
+        return -1;
+      }
+      rangoComp(p) {
+        if (p === COLOR || p === COLORES) return [0, 255];
+        if (p === ILUMINACION) return [0, 1];
+        return null;
+      }
+      aridadForma(s) {
+        if (s === CUBO) return 3;
+        if (s === ESFERA) return 1;
+        if (s === CILINDRO || s === CONO || s === PIRAMIDE) return 2;
+        return -1;
+      }
+      rangoEscalar(p) {
+        if (p === MASA) return [1e-9, 1e12];
+        if (p === REBOTE || p === RUGOSIDAD || p === VOLUMEN || p === INTENSIDAD) return [0, 1];
+        if (p === ANGULO) return [0, 360];
+        return null;
+      }
+      nombreProp(t) {
+        const m = {
+          [POSICION]: 'posicion', [GRAVEDAD]: 'gravedad', [ILUMINACION]: 'iluminacion',
+          [COLOR]: 'color', [OBJETIVO]: 'objetivo', [COLORES]: 'colores', [MASA]: 'masa',
+          [REBOTE]: 'rebote', [RUGOSIDAD]: 'rugosidad', [VOLUMEN]: 'volumen',
+          [INTENSIDAD]: 'intensidad', [ANGULO]: 'angulo'
+        };
+        return m[t] || 'propiedad';
+      }
+      nombreForma(t) {
+        const m = { [CUBO]: 'cubo', [ESFERA]: 'esfera', [CILINDRO]: 'cilindro', [CONO]: 'cono', [PIRAMIDE]: 'piramide' };
+        return m[t] || 'forma';
+      }
+
+      analizar(toks) {
+        this.errores = []; this.instancias = new Set();
+        // Pass 1: collect instances
+        for (let j = 0; j + 1 < toks.length; j++) {
+          if (toks[j].id === ENTIDAD && toks[j + 1].id === VAR) this.instancias.add(toks[j + 1].lexema);
+          if (toks[j].id === VAR && toks[j + 1].id === VAR) {
+            let k = j + 1;
+            while (k < toks.length && toks[k].id === VAR) {
+              this.instancias.add(toks[k].lexema);
+              if (k + 1 < toks.length && toks[k + 1].id === COMA) k += 2; else break;
+            }
+          }
+        }
+        // Pass 2: check rules
+        for (let j = 0; j < toks.length; j++) {
+          const id = toks[j].id;
+          // (A) vector arity + range
+          if (this.aridadVector(id) > 0 || id === COLORES) {
+            let k = j + 1;
+            while (k < toks.length && toks[k].id === DOS_PUNTOS) k++;
+            if (k < toks.length && toks[k].id === VECTOR) {
+              const comps = this.componentes(toks[k].lexema);
+              if (id === COLORES) {
+                let colors = [];
+                if (comps.length > 0 && this.esSubVector(comps[0])) {
+                  colors = comps.map(sv => this.componentes(sv));
+                } else { colors = [comps]; }
+                for (const cl of colors) {
+                  if (cl.length !== 3) this.errores.push({
+                    codigo: 'ES01', linea: toks[k].linea,
+                    mensaje: `colores: color con ${cl.length} componentes (se esperan 3)`
+                  });
+                  for (const c of cl) {
+                    const v = this.esNumero(c); if (v !== null && (v < 0 || v > 255))
+                      this.errores.push({
+                        codigo: 'ES02', linea: toks[k].linea,
+                        mensaje: `colores: componente ${c} fuera de rango [0,255]`
+                      });
+                  }
+                }
+              } else {
+                const esp = this.aridadVector(id);
+                if (comps.length !== esp) this.errores.push({
+                  codigo: 'ES01', linea: toks[k].linea,
+                  mensaje: `${this.nombreProp(id)}: vector con ${comps.length} componentes (se esperan ${esp})`
+                });
+                const rng = this.rangoComp(id);
+                if (rng) for (const c of comps) {
+                  const v = this.esNumero(c); if (v !== null && (v < rng[0] || v > rng[1]))
+                    this.errores.push({
+                      codigo: 'ES02', linea: toks[k].linea,
+                      mensaje: `${this.nombreProp(id)}: componente ${c} fuera de rango [${rng[0]},${rng[1]}]`
+                    });
+                }
+              }
+            } else if (k < toks.length && (toks[k].id === NUM) && id !== COLORES) {
+              this.errores.push({
+                codigo: 'ES01', linea: toks[k].linea,
+                mensaje: `${this.nombreProp(id)}: se esperaba un vector de ${this.aridadVector(id)} componentes, se recibió un escalar`
+              });
+            }
+          }
+          // (B) shape arity
+          const af = this.aridadForma(id);
+          if (af > 0) {
+            let k = j + 1;
+            if (k < toks.length && toks[k].id === APARENTESIS) {
+              k++; let cnt = 0;
+              if (k < toks.length && toks[k].id === VECTOR) {
+                cnt = this.componentes(toks[k].lexema).length;
+              } else {
+                while (k < toks.length && toks[k].id !== CPARENTESIS) {
+                  if (toks[k].id === NUM || toks[k].id === NUM_CON_SUFIJO) cnt++;
+                  k++;
+                }
+              }
+              if (cnt !== af) this.errores.push({
+                codigo: 'ES03', linea: toks[j].linea,
+                mensaje: `${this.nombreForma(id)}: ${cnt} argumentos (se esperan ${af})`
+              });
+            }
+          }
+          // (C) scalar range
+          const sr = this.rangoEscalar(id);
+          if (sr) {
+            let k = j + 1;
+            while (k < toks.length && toks[k].id === DOS_PUNTOS) k++;
+            if (k < toks.length && (toks[k].id === NUM || toks[k].id === NUM_CON_SUFIJO)) {
+              const v = this.esNumero(toks[k].lexema);
+              if (v !== null && (v < sr[0] || v > sr[1])) this.errores.push({
+                codigo: 'ES02', linea: toks[k].linea,
+                mensaje: `${this.nombreProp(id)}: valor ${toks[k].lexema} fuera de rango [${sr[0]},${sr[1]}]`
+              });
+            }
+          }
+          // (D) undeclared instance
+          if (id === VAR && j + 1 < toks.length && toks[j + 1].id === PUNTO) {
+            if (!this.instancias.has(toks[j].lexema))
+              this.errores.push({
+                codigo: 'ES04', linea: toks[j].linea,
+                mensaje: `instancia '${toks[j].lexema}' usada sin declaración previa`
+              });
+          }
+        }
+        return this.errores;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  EXTRACTOR DE ESCENA (para renderizado 3D)
+    // ═══════════════════════════════════════════════════════════════
+    function parseVec(vecStr) {
+      const nums = vecStr.replace(/[\[\]]/g, '').split(',').map(s => parseFloat(s.trim()));
+      return nums.filter(n => !isNaN(n));
+    }
+
+    function extractSceneData(toks) {
+      const entities = {};
+      const instances = [];
+      const posOverrides = {};
+      let cameraConfig = null;
+      let globalIluminacion = null;
+      let i = 0;
+
+      while (i < toks.length) {
+        if (toks[i].id === ILUMINACION && i + 2 < toks.length && toks[i + 1].id === DOS_PUNTOS && toks[i + 2].id === VECTOR) {
+          globalIluminacion = parseVec(toks[i + 2].lexema);
+          i += 3;
+          continue;
+        }
+        // Camera block
+        if (toks[i].id === CAMARA) {
+          let a = i + 1;
+          while (a < toks.length && toks[a].id !== ALLAVE) a++;
+          let aDepth = 1; a++;
+          cameraConfig = { posicion: null, objetivo: null, distancia: null };
+          while (a < toks.length && aDepth > 0) {
+            if (toks[a].id === ALLAVE) aDepth++;
+            if (toks[a].id === CLLAVE) { aDepth--; if (aDepth === 0) { i = a; break; } }
+            if (toks[a].id === POSICION && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS && toks[a + 2].id === VECTOR)
+              cameraConfig.posicion = parseVec(toks[a + 2].lexema);
+            if (toks[a].id === OBJETIVO && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS)
+              cameraConfig.objetivo = toks[a + 2].lexema;
+            a++;
+          }
+          i++;
+          continue;
+        }
+        // Entity definition
+        if (toks[i].id === ENTIDAD && i + 1 < toks.length && toks[i + 1].id === VAR) {
+          const name = toks[i + 1].lexema;
+          i += 2;
+          while (i < toks.length && toks[i].id !== ALLAVE) i++;
+          i++; // skip {
+          const ent = { objects: [] };
+          let depth = 1, obj = null, objDepth = 0;
+          while (i < toks.length && depth > 0) {
+            if (toks[i].id === ALLAVE) depth++;
+            if (toks[i].id === CLLAVE) {
+              depth--;
+              if (obj && depth < objDepth) { ent.objects.push(obj); obj = null; }
+              if (depth === 0) break;
+            }
+            if (toks[i].id === OBJETO && i + 1 < toks.length && toks[i + 1].id === CADENA) {
+              if (obj) ent.objects.push(obj);
+              obj = { name: toks[i + 1].lexema, forma: null, posicion: [0, 0, 0], color: [128, 128, 128] };
+              objDepth = depth + 1;
+            }
+            if (obj) {
+              if (toks[i].id === FORMA && i + 2 < toks.length && toks[i + 1].id === DOS_PUNTOS) {
+                const st = toks[i + 2];
+                if ([CUBO, ESFERA, CILINDRO, CONO, PIRAMIDE].includes(st.id)) {
+                  const args = []; let j = i + 3;
+                  if (j < toks.length && toks[j].id === APARENTESIS) {
+                    j++;
+                    while (j < toks.length && toks[j].id !== CPARENTESIS) {
+                      if (toks[j].id === NUM || toks[j].id === NUM_CON_SUFIJO) args.push(parseFloat(toks[j].lexema));
+                      j++;
+                    }
+                  }
+                  obj.forma = { tipo: st.id, args };
+                }
+              }
+              if (toks[i].id === POSICION && i + 2 < toks.length && toks[i + 1].id === DOS_PUNTOS && toks[i + 2].id === VECTOR)
+                obj.posicion = parseVec(toks[i + 2].lexema);
+              if (toks[i].id === COLOR && i + 2 < toks.length && toks[i + 1].id === DOS_PUNTOS && toks[i + 2].id === VECTOR)
+                obj.color = parseVec(toks[i + 2].lexema);
+              if (toks[i].id === ANIMACION && i + 1 < toks.length && toks[i + 1].id === CADENA) {
+                let animName = toks[i + 1].lexema;
+                let anim = { name: animName, tipo: null, eje: [0, 0, 1], velocidad: 1, distancia: [0, 0, 1], radio: 1 };
+                let a = i + 2;
+                while (a < toks.length && toks[a].id !== ALLAVE) a++;
+                let aDepth = 1; a++;
+                while (a < toks.length && aDepth > 0) {
+                  if (toks[a].id === ALLAVE) aDepth++;
+                  if (toks[a].id === CLLAVE) { aDepth--; if (aDepth === 0) { i = a; break; } }
+                  if (toks[a].id === TIPO && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS && toks[a + 2].id === CADENA)
+                    anim.tipo = toks[a + 2].lexema;
+                  if (toks[a].id === EJE && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS && toks[a + 2].id === VECTOR)
+                    anim.eje = parseVec(toks[a + 2].lexema);
+                  if (toks[a].id === DISTANCIA && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS && toks[a + 2].id === VECTOR)
+                    anim.distancia = parseVec(toks[a + 2].lexema);
+                  if (toks[a].id === VELOCIDAD && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS)
+                    anim.velocidad = parseFloat(toks[a + 2].lexema) || 1;
+                  if (toks[a].id === RADIO && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS)
+                    anim.radio = parseFloat(toks[a + 2].lexema) || 1;
+                  if (toks[a].id === ANGULO && a + 2 < toks.length && toks[a + 1].id === DOS_PUNTOS) {
+                    if (toks[a + 2].id === VECTOR) anim.angulo = parseVec(toks[a + 2].lexema);
+                    else if (toks[a + 2].id === NUM || toks[a + 2].id === NUM_CON_SUFIJO) anim.angulo = [parseFloat(toks[a + 2].lexema), parseFloat(toks[a + 2].lexema)];
+                  }
+                  a++;
+                }
+                if (!obj.animaciones) obj.animaciones = [];
+                obj.animaciones.push(anim);
+              }
+            }
+            if (toks[i].id === CONTROLES) {
+              let c = i + 1;
+              while (c < toks.length && toks[c].id !== ALLAVE) c++;
+              let cDepth = 1; c++;
+              ent.controles = {};
+              while (c < toks.length && cDepth > 0) {
+                if (toks[c].id === ALLAVE) cDepth++;
+                if (toks[c].id === CLLAVE) { cDepth--; if (cDepth === 0) { i = c; break; } }
+                if ([TW, TS, TA, TD, ESPACIO, SHIFT].includes(toks[c].id) && c + 2 < toks.length && toks[c + 1].id === DOS_PUNTOS) {
+                  const keyName = toks[c].lexema;
+                  let v = c + 2;
+                  while (v < toks.length && toks[v].id !== PCOMA && toks[v].id !== CLLAVE) {
+                    if (toks[v].id === VECTOR) {
+                      ent.controles[keyName] = parseVec(toks[v].lexema);
+                      break;
+                    }
+                    v++;
+                  }
+                }
+                c++;
+              }
+            }
+            if (toks[i].id === COLISION) {
+              let c = i + 1;
+              while (c < toks.length && toks[c].id !== ALLAVE) c++;
+              let cDepth = 1; c++;
+              ent.colision = { shape: null, args: [], offset: [0, 0, 0], tipo: 'solido' };
+              if (ent.objects.length > 0 && ent.objects[0].posicion) {
+                ent.colision.offset = ent.objects[0].posicion;
+              }
+              while (c < toks.length && cDepth > 0) {
+                if (toks[c].id === ALLAVE) cDepth++;
+                if (toks[c].id === CLLAVE) { cDepth--; if (cDepth === 0) { i = c; break; } }
+                if (toks[c].id === TIPO && c + 2 < toks.length && toks[c + 1].id === DOS_PUNTOS) {
+                  ent.colision.tipo = toks[c + 2].lexema.replace(/"/g, '');
+                }
+                if (toks[c].id === FORMA && c + 2 < toks.length && toks[c + 1].id === DOS_PUNTOS) {
+                  const st = toks[c + 2];
+                  if ([CUBO, ESFERA, CILINDRO, CONO, PIRAMIDE].includes(st.id)) {
+                    ent.colision.shape = st.id;
+                    let j = c + 3;
+                    if (j < toks.length && toks[j].id === APARENTESIS) {
+                      j++;
+                      while (j < toks.length && toks[j].id !== CPARENTESIS) {
+                        if (toks[j].id === NUM || toks[j].id === NUM_CON_SUFIJO) ent.colision.args.push(parseFloat(toks[j].lexema));
+                        j++;
+                      }
+                    }
+                  }
+                }
+                c++;
+              }
+            }
+            if (toks[i].id === FISICAS) {
+              let c = i + 1;
+              while (c < toks.length && toks[c].id !== ALLAVE) c++;
+              let cDepth = 1; c++;
+              ent.fisicas = { estatica: false };
+              while (c < toks.length && cDepth > 0) {
+                if (toks[c].id === ALLAVE) cDepth++;
+                if (toks[c].id === CLLAVE) { cDepth--; if (cDepth === 0) { i = c; break; } }
+                if (toks[c].id === ESTATICA && c + 2 < toks.length && toks[c + 1].id === DOS_PUNTOS) {
+                  ent.fisicas.estatica = (toks[c + 2].lexema === 'true');
+                }
+                c++;
+              }
+            }
+            i++;
+          }
+          if (obj) ent.objects.push(obj);
+          entities[name] = ent;
+          continue;
+        }
+        // Scene block
+        if (toks[i].id === ESCENA) {
+          while (i < toks.length && toks[i].id !== ALLAVE) i++;
+          i++; let depth = 1;
+          while (i < toks.length && depth > 0) {
+            if (toks[i].id === ALLAVE) depth++;
+            if (toks[i].id === CLLAVE) { depth--; if (depth === 0) break; }
+            // Instance: VAR VAR [, VAR]*;
+            if (toks[i].id === VAR && i + 1 < toks.length && toks[i + 1].id === VAR) {
+              const tipo = toks[i].lexema;
+              let j = i + 1;
+              while (j < toks.length && toks[j].id === VAR) {
+                instances.push({ tipo, nombre: toks[j].lexema });
+                if (j + 1 < toks.length && toks[j + 1].id === COMA) j += 2; else { j++; break; }
+              }
+            }
+            // Position: VAR.set_posicion(VECTOR);
+            if (toks[i].id === VAR && i + 1 < toks.length && toks[i + 1].id === PUNTO &&
+              i + 2 < toks.length && toks[i + 2].id === SET_POSICION) {
+              const nm = toks[i].lexema;
+              let j = i + 3;
+              while (j < toks.length && toks[j].id !== PCOMA) {
+                if (toks[j].id === VECTOR) { posOverrides[nm] = parseVec(toks[j].lexema); break; }
+                j++;
+              }
+            }
+            i++;
+          }
+        }
+        i++;
+      }
+      return { entities, instances, posOverrides, cameraConfig, globalIluminacion };
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  RENDERIZADOR 3D (Three.js)
+    // ═══════════════════════════════════════════════════════════════
+    let renderer3d = null, scene3d = null, camera3d = null, animFrame = null;
+
+    function createGeometry(forma) {
+      if (!forma) return new THREE.BoxGeometry(5, 5, 5);
+      const a = forma.args;
+      switch (forma.tipo) {
+        case CUBO: return new THREE.BoxGeometry(a[0] || 5, a[1] || 5, a[2] || 5);
+        case ESFERA: return new THREE.SphereGeometry(a[0] || 5, 24, 24);
+        case CILINDRO: return new THREE.CylinderGeometry(a[0] || 3, a[0] || 3, a[1] || 10, 24);
+        case CONO: return new THREE.ConeGeometry(a[0] || 5, a[1] || 10, 24);
+        case PIRAMIDE: return new THREE.ConeGeometry(a[0] || 5, a[1] || 10, 4);
+        default: return new THREE.BoxGeometry(5, 5, 5);
+      }
+    }
+
+    function renderScene(data, container) {
+      // Cleanup
+      if (animFrame) cancelAnimationFrame(animFrame);
+      if (renderer3d) { renderer3d.dispose(); renderer3d.domElement.remove(); }
+      container.innerHTML = '';
+
+      const canvas = document.createElement('canvas');
+      canvas.id = 'canvas3d';
+      container.appendChild(canvas);
+
+      const w = container.clientWidth || 600;
+      const h = container.clientHeight > 50 ? container.clientHeight - 40 : 400;
+      canvas.width = w; canvas.height = h;
+
+      scene3d = new THREE.Scene();
+      scene3d.background = new THREE.Color(0x0b1120);
+
+      camera3d = new THREE.PerspectiveCamera(50, w / h, 0.1, 5000);
+      renderer3d = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer3d.setSize(w, h);
+      renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      // Lights
+      if (data.globalIluminacion) {
+        const i = data.globalIluminacion;
+        scene3d.add(new THREE.AmbientLight(new THREE.Color(i[0], i[1], i[2]).getHex(), 1.0));
+      } else {
+        scene3d.add(new THREE.AmbientLight(0x4682B4, 0.5));
+      }
+      const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+      dl.position.set(50, 100, 80);
+      scene3d.add(dl);
+      const dl2 = new THREE.DirectionalLight(0x4682B4, 0.3);
+      dl2.position.set(-50, -30, 60);
+      scene3d.add(dl2);
+
+      // Grid
+      const grid = new THREE.GridHelper(300, 30, 0x243352, 0x1a2540);
+      grid.name = "grid3d";
+      grid.rotation.x = Math.PI / 2; // XY plane
+      scene3d.add(grid);
+
+      // Scale factor
+      const S = 1;
+      let allPositions = [];
+      let animatedMeshes = [];
+      let entitiesInst = [];
+      let keys = {};
+
+      canvas.tabIndex = 1;
+      canvas.style.outline = 'none';
+      canvas.addEventListener('keydown', e => {
+        keys[e.key.toUpperCase()] = true;
+        if (e.key === ' ') keys['ESPACIO'] = true;
+        if (e.key === 'Shift') keys['SHIFT'] = true;
+        // prevent default scrolling for wsad and space
+        if (['w', 'a', 's', 'd', 'W', 'A', 'S', 'D', ' ', 'Shift'].includes(e.key)) e.preventDefault();
+      });
+      canvas.addEventListener('keyup', e => {
+        keys[e.key.toUpperCase()] = false;
+        if (e.key === ' ') keys['ESPACIO'] = false;
+        if (e.key === 'Shift') keys['SHIFT'] = false;
+      });
+
+      // Build scene objects
+      const { entities, instances, posOverrides, cameraConfig } = data;
+
+      function addEntity(entName, worldPos) {
+        const ent = entities[entName];
+        if (!ent) return;
+        const group = new THREE.Group();
+        for (const obj of ent.objects) {
+          const geo = createGeometry(obj.forma);
+          const c = obj.color || [128, 128, 128];
+          const mat = new THREE.MeshPhongMaterial({
+            color: new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255),
+            shininess: 30,
+            transparent: true,
+            opacity: 0.92
+          });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.add(new THREE.LineSegments(
+            new THREE.EdgesGeometry(geo),
+            new THREE.LineBasicMaterial({ color: 0x4682B4, transparent: true, opacity: 0.2 })
+          ));
+          const p = obj.posicion || [0, 0, 0];
+          mesh.position.set(p[0] * S, p[1] * S, p[2] * S);
+          // Cylinder/cone are Y-up in Three.js, DSL uses Z-up
+          if (obj.forma && [CILINDRO, CONO, PIRAMIDE].includes(obj.forma.tipo)) {
+            mesh.rotation.x = Math.PI / 2;
+          }
+          if (obj.animaciones && obj.animaciones.length > 0) {
+            mesh.userData.animaciones = obj.animaciones;
+            mesh.userData.basePosition = new THREE.Vector3(p[0] * S, p[1] * S, p[2] * S);
+            animatedMeshes.push(mesh);
+          }
+          group.add(mesh);
+          allPositions.push([worldPos[0] + p[0], worldPos[1] + p[1], worldPos[2] + p[2]]);
+        }
+        group.position.set(worldPos[0] * S, worldPos[1] * S, worldPos[2] * S);
+        group.userData = {
+          name: entName,
+          controles: ent.controles || null,
+          colision: ent.colision || null,
+          fisicas: ent.fisicas || null,
+          velocity: new THREE.Vector3(0, 0, 0)
+        };
+        scene3d.add(group);
+        entitiesInst.push(group);
+      }
+
+      if (instances.length > 0) {
+        // Render instances from scene block
+        for (const inst of instances) {
+          const pos = posOverrides[inst.nombre] || [0, 0, 0];
+          addEntity(inst.tipo, pos);
+        }
+      } else {
+        // No scene block: render all entities at their default positions
+        let offsetX = 0;
+        for (const [name, ent] of Object.entries(entities)) {
+          addEntity(name, [offsetX, 0, 0]);
+          offsetX += 40;
+        }
+      }
+
+      // Camera position based on scene bounds
+      let maxDist = 50;
+      for (const p of allPositions) {
+        const d = Math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+        if (d > maxDist) maxDist = d;
+      }
+      const camDist = maxDist * 2.5;
+
+      // Orbit state
+      let theta = Math.PI / 4, phi = Math.PI / 3;
+      let dist = camDist;
+      let target = new THREE.Vector3(0, 0, maxDist * 0.3);
+
+      if (cameraConfig && cameraConfig.posicion) {
+        const cp = cameraConfig.posicion;
+        target.set(0, 0, 0);
+        let dx = cp[0] - target.x, dy = cp[1] - target.y, dz = cp[2] - target.z;
+        dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+        phi = Math.acos(dz / dist);
+        theta = Math.atan2(dy, dx);
+      }
+
+      function updateCam() {
+        camera3d.position.set(
+          target.x + dist * Math.sin(phi) * Math.cos(theta),
+          target.y + dist * Math.sin(phi) * Math.sin(theta),
+          target.z + dist * Math.cos(phi)
+        );
+        camera3d.up.set(0, 0, 1);
+        camera3d.lookAt(target);
+        renderer3d.render(scene3d, camera3d);
+      }
+
+      // Mouse orbit
+      let drag = false, lastX = 0, lastY = 0;
+      canvas.onmousedown = e => { drag = true; lastX = e.clientX; lastY = e.clientY; };
+      canvas.onmousemove = e => {
+        if (!drag) return;
+        theta -= (e.clientX - lastX) * 0.008;
+        phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + (e.clientY - lastY) * 0.008));
+        lastX = e.clientX; lastY = e.clientY; updateCam();
+      };
+      canvas.onmouseup = () => drag = false;
+      canvas.onmouseleave = () => drag = false;
+      canvas.onwheel = e => {
+        dist = Math.max(10, Math.min(camDist * 5, dist + e.deltaY * 0.5));
+        updateCam(); e.preventDefault();
+      };
+      // Touch support
+      canvas.ontouchstart = e => {
+        if (e.touches.length === 1) { drag = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; }
+      };
+      canvas.ontouchmove = e => {
+        if (!drag || e.touches.length !== 1) return;
+        theta -= (e.touches[0].clientX - lastX) * 0.008;
+        phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi + (e.touches[0].clientY - lastY) * 0.008));
+        lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; updateCam(); e.preventDefault();
+      };
+      canvas.ontouchend = () => drag = false;
+
+      const clock = new THREE.Clock();
+
+      // Animation loop
+      function animate() {
+        const dt = clock.getDelta();
+        const time = clock.getElapsedTime();
+        for (const mesh of animatedMeshes) {
+          for (const anim of mesh.userData.animaciones) {
+            if (anim.tipo === 'rotacion' || anim.tipo === 'rotacion_ciclica') {
+              const rx = anim.eje[0] || 0, ry = anim.eje[1] || 0, rz = anim.eje[2] || 0;
+              if (anim.tipo === 'rotacion') {
+                mesh.rotation.x += rx * anim.velocidad * dt;
+                mesh.rotation.y += ry * anim.velocidad * dt;
+                mesh.rotation.z += rz * anim.velocidad * dt;
+              } else {
+                const angBase = anim.angulo ? (anim.angulo[0] * Math.PI / 180) : 0;
+                const angRango = anim.angulo ? ((anim.angulo[1] - anim.angulo[0]) * Math.PI / 180) : (Math.PI / 4);
+                const currentAngle = angBase + Math.sin(time * anim.velocidad) * angRango;
+                mesh.rotation.x = rx ? currentAngle : 0;
+                mesh.rotation.y = ry ? currentAngle : 0;
+                mesh.rotation.z = rz ? currentAngle : 0;
+              }
+            } else if (anim.tipo === 'flotar' || anim.tipo === 'traslacion_ciclica' || anim.tipo === 'orbital') {
+              const bp = mesh.userData.basePosition;
+              if (anim.tipo === 'orbital') {
+                mesh.position.x = bp.x + Math.cos(time * anim.velocidad) * anim.radio;
+                mesh.position.y = bp.y + Math.sin(time * anim.velocidad) * anim.radio;
+              } else {
+                const dx = anim.distancia[0] || 0, dy = anim.distancia[1] || 0, dz = anim.distancia[2] || 0;
+                mesh.position.x = bp.x + Math.sin(time * anim.velocidad) * dx;
+                mesh.position.y = bp.y + Math.sin(time * anim.velocidad) * dy;
+                mesh.position.z = bp.z + Math.sin(time * anim.velocidad) * dz;
+              }
+            }
+          }
+        }
+
+        // Physics and Controls
+        for (let i = 0; i < entitiesInst.length; i++) {
+          const inst = entitiesInst[i];
+          const isStatic = (inst.userData.fisicas && inst.userData.fisicas.estatica) || inst.userData.name === 'Suelo' || inst.userData.name === 'Muro';
+
+          if (!isStatic && inst.userData.controles) {
+            const c = inst.userData.controles;
+            const accel = new THREE.Vector3(0, 0, 0);
+            if (keys['W'] && c['W']) accel.add(new THREE.Vector3(...c['W']));
+            if (keys['S'] && c['S']) accel.add(new THREE.Vector3(...c['S']));
+            if (keys['A'] && c['A']) accel.add(new THREE.Vector3(...c['A']));
+            if (keys['D'] && c['D']) accel.add(new THREE.Vector3(...c['D']));
+            if (keys['ESPACIO'] && c['ESPACIO']) accel.add(new THREE.Vector3(...c['ESPACIO']));
+            if (keys['SHIFT'] && c['SHIFT']) accel.add(new THREE.Vector3(...c['SHIFT']));
+
+            inst.userData.velocity.addScaledVector(accel, dt * 10);
+          }
+
+          if (!isStatic) {
+            // Gravity and friction
+            inst.userData.velocity.z -= 9.8 * dt; // gravity
+            inst.userData.velocity.x *= 0.92;
+            inst.userData.velocity.y *= 0.92;
+            inst.position.addScaledVector(inst.userData.velocity, dt);
+          }
+
+          // Floor collision
+          if (!isStatic && inst.position.z < 0) {
+            inst.position.z = 0;
+            inst.userData.velocity.z = Math.max(0, inst.userData.velocity.z);
+          }
+        }
+
+        // Entity Collisions
+        for (let i = 0; i < entitiesInst.length; i++) {
+          const a = entitiesInst[i];
+          if (!a.userData.colision) continue;
+          const aStatic = (a.userData.fisicas && a.userData.fisicas.estatica) || a.userData.name === 'Suelo' || a.userData.name === 'Muro';
+
+          for (let j = i + 1; j < entitiesInst.length; j++) {
+            const b = entitiesInst[j];
+            if (!b.userData.colision) continue;
+            const bStatic = (b.userData.fisicas && b.userData.fisicas.estatica) || b.userData.name === 'Suelo' || b.userData.name === 'Muro';
+            if (aStatic && bStatic) continue;
+
+            const aArgs = a.userData.colision.args;
+            const bArgs = b.userData.colision.args;
+
+            let aW, aL, aH, bW, bL, bH;
+            if (a.userData.colision.shape === ESFERA) {
+              aW = aL = aH = aArgs[0] || 5;
+            } else {
+              aW = (aArgs[0] || 10) / 2; aL = (aArgs[1] || aArgs[0] || 10) / 2; aH = (aArgs[2] || aArgs[0] || 10) / 2;
+            }
+            if (b.userData.colision.shape === ESFERA) {
+              bW = bL = bH = bArgs[0] || 5;
+            } else {
+              bW = (bArgs[0] || 10) / 2; bL = (bArgs[1] || bArgs[0] || 10) / 2; bH = (bArgs[2] || bArgs[0] || 10) / 2;
+            }
+
+            const aPos = new THREE.Vector3(
+              a.position.x + (a.userData.colision.offset[0] || 0),
+              a.position.y + (a.userData.colision.offset[1] || 0),
+              a.position.z + (a.userData.colision.offset[2] || 0)
+            );
+            const bPos = new THREE.Vector3(
+              b.position.x + (b.userData.colision.offset[0] || 0),
+              b.position.y + (b.userData.colision.offset[1] || 0),
+              b.position.z + (b.userData.colision.offset[2] || 0)
+            );
+
+            const dx = aPos.x - bPos.x;
+            const dy = aPos.y - bPos.y;
+            const dz = aPos.z - bPos.z;
+
+            if (Math.abs(dx) < aW + bW && Math.abs(dy) < aL + bL && Math.abs(dz) < aH + bH) {
+              if (a.userData.colision.tipo === 'trigger' || b.userData.colision.tipo === 'trigger') {
+                if (a.userData.colision.tipo === 'trigger') { a.visible = false; a.position.z = -9999; }
+                if (b.userData.colision.tipo === 'trigger') { b.visible = false; b.position.z = -9999; }
+                continue;
+              }
+
+              const ox = (aW + bW) - Math.abs(dx);
+              const oy = (aL + bL) - Math.abs(dy);
+              const oz = (aH + bH) - Math.abs(dz);
+
+              let resolveDir = new THREE.Vector3(0, 0, 0);
+              let overlap = 0;
+
+              if (ox < oy && ox < oz) {
+                resolveDir.x = Math.sign(dx) || 1; overlap = ox;
+                if (!aStatic && a.userData.velocity.x * resolveDir.x < 0) a.userData.velocity.x = 0;
+                if (!bStatic && b.userData.velocity.x * -resolveDir.x < 0) b.userData.velocity.x = 0;
+              }
+              else if (oy < ox && oy < oz) {
+                resolveDir.y = Math.sign(dy) || 1; overlap = oy;
+                if (!aStatic && a.userData.velocity.y * resolveDir.y < 0) a.userData.velocity.y = 0;
+                if (!bStatic && b.userData.velocity.y * -resolveDir.y < 0) b.userData.velocity.y = 0;
+              }
+              else {
+                resolveDir.z = Math.sign(dz) || 1; overlap = oz;
+                if (!aStatic && a.userData.velocity.z * resolveDir.z < 0) a.userData.velocity.z = 0;
+                if (!bStatic && b.userData.velocity.z * -resolveDir.z < 0) b.userData.velocity.z = 0;
+              }
+
+              if (!aStatic && !bStatic) {
+                a.position.addScaledVector(resolveDir, overlap * 0.5);
+                b.position.addScaledVector(resolveDir, -overlap * 0.5);
+              } else if (!aStatic) {
+                a.position.addScaledVector(resolveDir, overlap);
+              } else if (!bStatic) {
+                b.position.addScaledVector(resolveDir, -overlap);
+              }
+            }
+          }
+        }
+
+        updateCam();
+        animFrame = requestAnimationFrame(animate);
+      }
+      animate();
+
+      // Info
+      const info = document.createElement('div');
+      info.className = 'scene-info';
+      const nEnts = Object.keys(entities).length;
+      const nObjs = Object.values(entities).reduce((s, e) => s + e.objects.length, 0);
+      const nInst = instances.length;
+      info.innerHTML = `<span>${nEnts}</span> entidades · <span>${nObjs}</span> objetos · <span>${nInst || nEnts}</span> instancias · Arrastra para rotar, scroll para zoom`;
+      container.appendChild(info);
+
+      // Handle resize
+      const ro = new ResizeObserver(() => {
+        const nw = container.clientWidth || 600;
+        const nh = container.clientHeight > 50 ? container.clientHeight - 40 : 400;
+        camera3d.aspect = nw / nh;
+        camera3d.updateProjectionMatrix();
+        renderer3d.setSize(nw, nh);
+        updateCam();
+      });
+      ro.observe(container);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  INTERFAZ — Tabs, análisis, resultados
+    // ═══════════════════════════════════════════════════════════════
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
+    }
+
+    function setDot(tab, status) {
+      const dot = document.querySelector(`.tab[data-tab="${tab}"] .dot`);
+      if (dot) { dot.className = 'dot dot-' + status; }
+    }
+
+    function runAnalysis() {
+      const src = document.getElementById('code').value;
+      if (!src.trim()) return;
+
+      // Reset
+      ['lexico', 'sintactico', 'semantico', 'ejecucion'].forEach(t => setDot(t, 'none'));
+
+      // ── FASE 1: LÉXICO ──
+      const lex = new AnalizadorLexico(src);
+      const lexOk = lex.analizar();
+      const pLex = document.getElementById('pane-lexico');
+
+      if (!lexOk) {
+        pLex.innerHTML = `<div class="msg msg-err">✗ Error Léxico: ${lex.error}</div>`;
+        setDot('lexico', 'err');
+        document.getElementById('pane-sintactico').innerHTML = '<div class="msg msg-info">El análisis sintáctico requiere que el léxico pase correctamente.</div>';
+        document.getElementById('pane-semantico').innerHTML = '<div class="msg msg-info">El análisis semántico requiere que el sintáctico pase correctamente.</div>';
+        document.getElementById('pane-ejecucion').innerHTML = '<div class="msg msg-info">La ejecución requiere que las 3 fases anteriores pasen.</div>';
+        setDot('sintactico', 'none'); setDot('semantico', 'none'); setDot('ejecucion', 'none');
+        switchTab('lexico');
+        return;
+      }
+
+      // Token table
+      const totalTokens = lex.tokensInfo.length;
+      let tableHTML = `<div class="stats">
+    <div class="stat"><div class="stat-val">${totalTokens}</div><div class="stat-label">Tokens generados</div></div>
+    <div class="stat"><div class="stat-val">${lex.tokensInfo[lex.tokensInfo.length - 1]?.linea || 0}</div><div class="stat-label">Líneas procesadas</div></div>
+  </div>
+  <div class="msg msg-ok"><strong>Análisis Léxico Finalizado</strong> — ${totalTokens} tokens extraídos y procesados con éxito.</div>
+  <div style="max-height:calc(100vh - 260px);overflow:auto">
+  <table class="tok-table"><thead><tr><th class="ln">Lín</th><th class="tid">ID</th><th class="tname">Token</th><th class="lex">Lexema</th></tr></thead><tbody>`;
+      for (const t of lex.tokensInfo) {
+        if (t.id === FIN) continue;
+        tableHTML += `<tr><td class="ln">${t.linea}</td><td class="tid">${t.id}</td><td class="tname">${TOKEN_NAMES[t.id] || '?'}</td><td class="lex">${escHtml(t.lexema)}</td></tr>`;
+      }
+      tableHTML += '</tbody></table></div>';
+      pLex.innerHTML = tableHTML;
+      setDot('lexico', 'ok');
+
+      // ── FASE 2: SINTÁCTICO ──
+      const sint = new AnalizadorSintactico();
+      const sintOk = sint.analizar(lex.tokens);
+      const pSint = document.getElementById('pane-sintactico');
+
+      if (!sintOk) {
+        pSint.innerHTML = `<div class="msg msg-err">✗ Análisis Sintáctico FALLIDO</div>
+      <div class="msg msg-warn">${escHtml(sint.errorMsg)}</div>
+      <div class="msg msg-info">Verifica la estructura de tu código DSL. El autómata no pudo procesar el token indicado en el módulo y estado mostrados.</div>`;
+        setDot('sintactico', 'err');
+        document.getElementById('pane-semantico').innerHTML = '<div class="msg msg-info">El análisis semántico requiere que el sintáctico pase correctamente.</div>';
+        document.getElementById('pane-ejecucion').innerHTML = '<div class="msg msg-info">La ejecución requiere que las 3 fases anteriores pasen.</div>';
+        setDot('semantico', 'none'); setDot('ejecucion', 'none');
+        switchTab('sintactico');
+        return;
+      }
+
+      pSint.innerHTML = `<div class="msg msg-ok"><strong>Análisis Sintáctico Aprobado</strong> — La estructura modular de tu código es impecable.</div>
+    <div class="msg msg-info">El autómata finito modular recorrió todos los tokens y alcanzó un estado final válido. Los módulos INICIO, CÁMARA, ENTIDAD, ESCENA y VECTOR procesaron la estructura correctamente.</div>`;
+      setDot('sintactico', 'ok');
+
+      // ── FASE 3: SEMÁNTICO ──
+      const sem = new AnalizadorSemantico();
+      const errores = sem.analizar(lex.tokensInfo);
+      const pSem = document.getElementById('pane-semantico');
+
+      if (errores.length === 0) {
+        pSem.innerHTML = `<div class="msg msg-ok"><strong>Análisis Semántico Aprobado</strong> — No se encontraron conflictos físicos o lógicos.</div>
+      <div class="msg msg-info">Se verificaron reglas de aridad de vectores (ES01), rangos de valores (ES02), aridad de formas 3D (ES03) y declaración de instancias (ES04). Todo correcto.</div>`;
+        setDot('semantico', 'ok');
+      } else {
+        let errHTML = `<div class="stats">
+      <div class="stat"><div class="stat-val">${errores.length}</div><div class="stat-label">Errores semánticos</div></div>
+    </div>
+    <div class="msg msg-warn">⚠ Se encontraron ${errores.length} errores semánticos (recolección acumulativa)</div>
+    <ul class="err-list">`;
+        for (const e of errores) {
+          errHTML += `<li><span class="code">[${e.codigo}]</span> <span class="line">Línea ${e.linea}</span> — <span class="emsg">${escHtml(e.mensaje)}</span></li>`;
+        }
+        errHTML += '</ul>';
+        pSem.innerHTML = errHTML;
+        setDot('semantico', 'warn');
+      }
+
+      // ── FASE 4: EJECUCIÓN 3D ──
+      const pExe = document.getElementById('pane-ejecucion');
+      try {
+        const sceneData = extractSceneData(lex.tokensInfo);
+        const nObjs = Object.values(sceneData.entities).reduce((s, e) => s + e.objects.length, 0);
+        if (nObjs === 0) {
+          pExe.innerHTML = '<div class="msg msg-info">No se encontraron objetos con formas 3D para renderizar.</div>';
+          setDot('ejecucion', 'warn');
+        } else {
+          pExe.innerHTML = '';
+          renderScene(sceneData, pExe);
+          setDot('ejecucion', 'ok');
+        }
+      } catch (e) {
+        pExe.innerHTML = `<div class="msg msg-err">Error en el renderizado: ${escHtml(e.message)}</div>`;
+        setDot('ejecucion', 'err');
+      }
+
+      switchTab('ejecucion');
+    }
+
+    function escHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  EJEMPLOS PRECARGADOS
+    // ═══════════════════════════════════════════════════════════════
+    const EXAMPLES = {
+      'Escena Completa (RPG)': `camara {
+    posicion: [0, 0, 50];
+    objetivo: Jugador;
+    distancia: 60;
+    angulo: [45, 0, 0];
+    modo: "seguir";
+    efectos: {
+        vibracion_colision: true;
+        zoom_dinamico: true;
+    }
+}
+
+gravedad: [0, 0, -12.8];
+iluminacion: [1.2, 1.2, 1.0];
+
+entidad Suelo {
+    objeto "piso" {
+        forma: cubo(200, 200, 2);
+        posicion: [0, 0, 1];
+        color: [34, 139, 34];
+        material: "cesped";
+        animacion "ondular" {
+            tipo: "onda";
+            amplitud: 0.2;
+            frecuencia: 2.0;
+            loop: true;
+        }
+    }
+    colision {
+        forma: cubo(200, 200, 2);
+        tipo: "solido";
+        material: "tierra";
+        rebote: 0.1;
+        rugosidad: 0.9;
+    }
+    sonido {
+        pisar: "paso_cesped.wav";
+        volumen: 0.5;
+    }
+}
+
+entidad Jugador {
+    objeto "cuerpo" {
+        forma: cubo(8, 8, 16);
+        posicion: [0, 0, 10];
+        color: [0, 100, 255];
+        animacion "correr" {
+            tipo: "rotacion_ciclica";
+            eje: [0,0,1];
+            angulo: [-5, 5];
+            duracion: 0.3s;
+            loop: true;
+        }
+        animacion "saltar" {
+            tipo: "escalado_estirar";
+            factor: [1, 1, 1.3];
+            duracion: 0.2s;
+            loop: false;
+        }
+    }
+    objeto "cabeza" {
+        forma: esfera(5);
+        posicion: [0, 0, 22];
+        color: [0, 100, 255];
+    }
+    objeto "brazo_izquierdo" {
+        forma: cubo(3, 3, 12);
+        posicion: [-5, 0, 10];
+        color: [0, 100, 255];
+    }
+    objeto "brazo_derecho" {
+        forma: cubo(3, 3, 12);
+        posicion: [5, 0, 10];
+        color: [0, 100, 255];
+    }
+    controles {
+        W: aplicar_fuerza [0, 12, 0];
+        S: aplicar_fuerza [0, -10, 0];
+        A: aplicar_fuerza [-12, 0, 0];
+        D: aplicar_fuerza [12, 0, 0];
+        ESPACIO: aplicar_impulso [0, 0, 14] si (en_suelo o saltos_restantes > 0);
+        SHIFT: aplicar_fuerza [0, 0, 20] modo "dash";
+        R: recargar_escena;
+    }
+    colision {
+        forma: cubo(8, 8, 16);
+        tipo: "solido";
+        material: "carne";
+        rebote: 0.05;
+        rugosidad: 0.6;
+        al_colisionar_con Enemigo {
+            aplicar_impulso [0, 0, 8] al_otro;
+            reproducir_sonido "golpe.wav";
+            perder_vida(1);
+            animacion_temblor(0.5s);
+        }
+        al_colisionar_con Moneda {
+            recolectar;
+            reproducir_sonido "moneda.wav";
+            sumar_puntaje(100);
+        }
+    }
+}
+
+entidad Moneda {
+    objeto "disco" {
+        forma: cilindro(3, 1);
+        posicion: [30, 20, 10];
+        color: [255, 215, 0];
+        material: "oro";
+        animacion "flotar" {
+            tipo: "traslacion_ciclica";
+            eje: [0, 0, 1];
+            distancia: [0, 0, 2];
+            duracion: 1.5s;
+            loop: true;
+            easing: "sine";
+        }
+        animacion "brillar" {
+            tipo: "color_pulse";
+            colores: [[255,215,0], [255,255,100], [255,215,0]];
+            duracion: 0.8s;
+            loop: true;
+        }
+        animacion "girar" {
+            tipo: "rotacion";
+            eje: [0,0,1];
+            angulo: 360;
+            duracion: 2s;
+            loop: true;
+        }
+    }
+    comportamiento {
+        rotar: [0, 0, 5];
+        atraer_jugador: true si distancia < 15;
+    }
+    colision {
+        forma: esfera(4);
+        tipo: "trigger";
+        material: "metal_precioso";
+        al_colisionar: {
+            destruir;
+            sumar_puntaje(100);
+            spawn_efecto("estrella");
+            reproducir_sonido("moneda.wav");
+            animacion_camara("sacudida_leve");
+        }
+    }
+}
+
+entidad Enemigo {
+    objeto "cuerpo" {
+        forma: cubo(10, 10, 10);
+        posicion: [50, 0, 7];
+        color: [255, 0, 0];
+        material: "metal";
+        animacion "respirar" {
+            tipo: "escalado_ciclico";
+            factor: [1.05, 1.05, 1.02];
+            duracion: 1.2s;
+            loop: true;
+        }
+    }
+    objeto "ojo" {
+        forma: esfera(3);
+        posicion: [50, 5, 10];
+        color: [255, 255, 255];
+    }
+    comportamiento {
+        fisica_simulada: true;
+        gravedad_influencia: 1.0;
+        patron "perseguir" {
+            activar_si distancia(Jugador) < 30;
+            aplicar_fuerza_hacia Jugador [8, 8, 0];
+            velocidad_max: [6, 6, 0];
+        }
+        patron "patrullar" {
+            puntos: [[50,0,7], [60,0,7], [50,0,7], [40,0,7]];
+            velocidad: 3;
+            loop: true;
+        }
+        ataque {
+            tipo: "cuerpo_a_cuerpo";
+            dano: 20;
+            cooldown: 1.5s;
+            animacion "embestir" {
+                duracion: 0.4s;
+                aplicar_impulso [0, 0, 12];
+            }
+        }
+    }
+    colision {
+        forma: cubo(10, 10, 10);
+        tipo: "solido";
+        material: "acero";
+        rebote: 0.2;
+        rugosidad: 0.8;
+        al_colisionar_con Jugador {
+            aplicar_impulso [0, 0, 5] al_otro;
+            restar_vida(20);
+            reproducir_sonido "golpe_enemigo.wav";
+            animacion_temblor(0.3s);
+        }
+    }
+    sonido {
+        paso: "paso_robot.wav";
+        ataque: "golpe_metal.wav";
+        muerte: "explosion.wav";
+    }
+}
+
+entidad Muro {
+    objeto "pared" {
+        forma: cubo(5, 40, 20);
+        posicion: [80, 0, 12];
+        color: [120, 120, 120];
+        material: "piedra";
+    }
+    colision {
+        forma: cubo(5, 40, 20);
+        tipo: "solido";
+        material: "roca";
+        rebote: 0.15;
+        rugosidad: 0.85;
+        al_colisionar_con "explosivo" {
+            aplicar_fuerza [0, 0, 20] al_otro;
+            destruir_si fuerza > 100;
+        }
+    }
+    fisicas {
+        masa: 1000;
+        estatica: true;
+    }
+}
+
+entidad PowerUp {
+    objeto "cristal" {
+        forma: esfera(4);
+        color: [255, 0, 255];
+        material: "cristal";
+        animacion "flotar_brillar" {
+            tipo: "orbital";
+            radio: 2;
+            velocidad: 90grados/s;
+            loop: true;
+        }
+    }
+    comportamiento {
+        fisica_simulada: true;
+        gravedad_influencia: 0.3;
+        flotar: true;
+        rotar: [5, 5, 5];
+    }
+    colision {
+        forma: esfera(5);
+        tipo: "trigger";
+        al_colisionar: {
+            destruir;
+            Jugador.activar_powerup("super_salto", 10s);
+            Jugador.cambiar_color([255,200,0]);
+            reproducir_musica("powerup.wav");
+            camara.efecto("desenfoque_radial", 0.5s);
+        }
+    }
+}
+
+escena juego1 {
+    camara.iniciar();
+    fisicas.activar_gravedad([0, 0, -12.8]);
+    fisicas.activar_colisiones();
+    fisicas.activar_viento([0.5, 0, 0]);
+    Suelo s1;
+    Jugador player1;
+    Muro m1, m2, m3, m4;
+    Moneda c1, c2, c3;
+    Enemigo e1;
+    PowerUp p1, p2;
+    s1.set_posicion([0, 0, 1]);
+    player1.set_posicion([0, 0, 10]);
+    m1.set_posicion([80, 0, 12]);
+    m2.set_posicion([-80, 0, 12]);
+    m3.set_posicion([0, 80, 12]);
+    m4.set_posicion([0, -80, 12]);
+    c1.set_posicion([30, 20, 10]);
+    c2.set_posicion([40, 25, 15]);
+    c3.set_posicion([50, 20, 10]);
+    e1.set_posicion([50, 0, 7]);
+    p1.set_posicion([20, 15, 20]);
+    p2.set_posicion([-20, 15, 20]);
+    animacion.reproducir(player1.cuerpo, "correr", false);
+    animacion.reproducir(player1.brazo_izquierdo, "balanceo_caminar", true);
+    animacion.reproducir(player1.brazo_derecho, "balanceo_caminar", true);
+    hud.mostrar_puntaje();
+    hud.mostrar_vidas(3);
+    hud.mostrar_powerup_timer();
+    audio.reproducir_musica("tema_principal.mp3", loop=true, volumen=0.7);
+}`,
+      'Cama': `entidad Cama {
+    objeto "marco" {
+        forma: cubo(44, 74, 4);
+        posicion: [0, 0, 12];
+        color: [139, 90, 43];
+    }
+    objeto "colchon" {
+        forma: cubo(40, 70, 8);
+        posicion: [0, 0, 18];
+        color: [240, 240, 245];
+    }
+    objeto "cabecera" {
+        forma: cubo(44, 4, 25);
+        posicion: [0, -37, 24];
+        color: [139, 90, 43];
+    }
+    objeto "almohada" {
+        forma: cubo(20, 12, 5);
+        posicion: [0, -28, 24];
+        color: [255, 255, 255];
+    }
+    objeto "pata_1" {
+        forma: cilindro(2, 12);
+        posicion: [-20, 35, 6];
+        color: [100, 60, 30];
+    }
+    objeto "pata_2" {
+        forma: cilindro(2, 12);
+        posicion: [20, 35, 6];
+        color: [100, 60, 30];
+    }
+}`,
+      'Árbol': `entidad Arbol {
+    objeto "tronco" {
+        forma: cilindro(4, 25);
+        posicion: [0, 0, 12];
+        color: [101, 67, 33];
+    }
+    objeto "copa_baja" {
+        forma: esfera(18);
+        posicion: [0, 0, 32];
+        color: [34, 139, 34];
+    }
+    objeto "copa_alta" {
+        forma: esfera(12);
+        posicion: [0, 0, 45];
+        color: [0, 180, 0];
+    }
+}`,
+      'Muñeco de Nieve': `entidad Muneco {
+    objeto "cuerpo" {
+        forma: esfera(15);
+        posicion: [0, 0, 15];
+        color: [240, 240, 255];
+    }
+    objeto "cabeza" {
+        forma: esfera(10);
+        posicion: [0, 0, 35];
+        color: [245, 245, 255];
+    }
+}`,
+      'Mesa': `entidad Mesa {
+    objeto "superficie" {
+        forma: cubo(50, 30, 3);
+        posicion: [0, 0, 25];
+        color: [160, 110, 60];
+    }
+    objeto "pata_1" {
+        forma: cilindro(2, 25);
+        posicion: [-22, -12, 12];
+        color: [120, 80, 40];
+    }
+    objeto "pata_2" {
+        forma: cilindro(2, 25);
+        posicion: [22, -12, 12];
+        color: [120, 80, 40];
+    }
+    objeto "pata_3" {
+        forma: cilindro(2, 25);
+        posicion: [-22, 12, 12];
+        color: [120, 80, 40];
+    }
+    objeto "pata_4" {
+        forma: cilindro(2, 25);
+        posicion: [22, 12, 12];
+        color: [120, 80, 40];
+    }
+}`,
+      'Hongo': `entidad Hongo {
+    objeto "tallo" {
+        forma: cilindro(4, 12);
+        posicion: [0, 0, 6];
+        color: [230, 220, 200];
+    }
+    objeto "sombrero" {
+        forma: esfera(12);
+        posicion: [0, 0, 16];
+        color: [220, 40, 40];
+    }
+}`,
+      'Escalón': `entidad Escalon {
+    objeto "piso_bajo" {
+        forma: cubo(30, 20, 5);
+        posicion: [0, 0, 2];
+        color: [150, 150, 150];
+    }
+    objeto "piso_alto" {
+        forma: cubo(30, 20, 5);
+        posicion: [0, -20, 7];
+        color: [170, 170, 170];
+    }
+}`,
+      'Cruz': `entidad Cruz {
+    objeto "base" {
+        forma: cilindro(10, 3);
+        posicion: [0, 0, 1];
+        color: [100, 100, 100];
+    }
+    objeto "vertical" {
+        forma: cubo(6, 6, 40);
+        posicion: [0, 0, 23];
+        color: [200, 200, 200];
+    }
+    objeto "horizontal" {
+        forma: cubo(30, 6, 6);
+        posicion: [0, 0, 35];
+        color: [200, 200, 200];
+    }
+}`,
+      'Setup Gamer': `entidad Escritorio {
+    objeto "superficie" {
+        forma: cubo(80, 50, 4);
+        posicion: [0, 0, 35];
+        color: [50, 50, 60];
+    }
+    objeto "pata_1" {
+        forma: cilindro(2, 35);
+        posicion: [-36, -21, 17];
+        color: [40, 40, 50];
+    }
+    objeto "pata_2" {
+        forma: cilindro(2, 35);
+        posicion: [36, -21, 17];
+        color: [40, 40, 50];
+    }
+    objeto "pata_3" {
+        forma: cilindro(2, 35);
+        posicion: [-36, 21, 17];
+        color: [40, 40, 50];
+    }
+    objeto "pata_4" {
+        forma: cilindro(2, 35);
+        posicion: [36, 21, 17];
+        color: [40, 40, 50];
+    }
+    objeto "pantalla" {
+        forma: cubo(40, 3, 25);
+        posicion: [0, -20, 52];
+        color: [20, 20, 30];
+    }
+    objeto "soporte_monitor" {
+        forma: cilindro(3, 12);
+        posicion: [0, -20, 43];
+        color: [60, 60, 70];
+    }
+    objeto "base_monitor" {
+        forma: cilindro(10, 2);
+        posicion: [0, -20, 38];
+        color: [60, 60, 70];
+    }
+}
+
+entidad Silla {
+    objeto "asiento" {
+        forma: cubo(35, 35, 4);
+        posicion: [0, 30, 22];
+        color: [30, 30, 40];
+    }
+    objeto "respaldo" {
+        forma: cubo(35, 4, 35);
+        posicion: [0, 48, 41];
+        color: [30, 30, 40];
+    }
+    objeto "base_ruedas" {
+        forma: cilindro(15, 2);
+        posicion: [0, 30, 1];
+        color: [50, 50, 60];
+    }
+    objeto "poste_silla" {
+        forma: cilindro(3, 20);
+        posicion: [0, 30, 12];
+        color: [60, 60, 70];
+    }
+}
+
+escena SetupGamer {
+    Escritorio e1;
+    Silla s1;
+    e1.set_posicion([0, 0, 0]);
+    s1.set_posicion([0, 30, 0]);
+}`,
+      'Robot': `entidad Robot {
+    objeto "cabeza" {
+        forma: esfera(8);
+        posicion: [0, 0, 52];
+        color: [180, 180, 200];
+    }
+    objeto "ojo_izq" {
+        forma: esfera(2);
+        posicion: [-3, 6, 54];
+        color: [0, 200, 255];
+    }
+    objeto "ojo_der" {
+        forma: esfera(2);
+        posicion: [3, 6, 54];
+        color: [0, 200, 255];
+    }
+    objeto "torso" {
+        forma: cubo(20, 12, 24);
+        posicion: [0, 0, 34];
+        color: [100, 100, 120];
+    }
+    objeto "brazo_izq" {
+        forma: cilindro(3, 22);
+        posicion: [-14, 0, 33];
+        color: [140, 140, 160];
+    }
+    objeto "brazo_der" {
+        forma: cilindro(3, 22);
+        posicion: [14, 0, 33];
+        color: [140, 140, 160];
+    }
+    objeto "pierna_izq" {
+        forma: cilindro(3, 22);
+        posicion: [-6, 0, 11];
+        color: [100, 100, 120];
+    }
+    objeto "pierna_der" {
+        forma: cilindro(3, 22);
+        posicion: [6, 0, 11];
+        color: [100, 100, 120];
+    }
+    objeto "pie_izq" {
+        forma: cubo(8, 10, 3);
+        posicion: [-6, 2, 1];
+        color: [80, 80, 100];
+    }
+    objeto "pie_der" {
+        forma: cubo(8, 10, 3);
+        posicion: [6, 2, 1];
+        color: [80, 80, 100];
+    }
+}`,
+      'Poste': `entidad Poste {
+    objeto "base" {
+        forma: cilindro(8, 2);
+        posicion: [0, 0, 1];
+        color: [80, 80, 80];
+    }
+    objeto "tubo" {
+        forma: cilindro(2, 40);
+        posicion: [0, 0, 22];
+        color: [60, 60, 60];
+    }
+}`,
+      'Parque': `entidad Suelo {
+    objeto "pasto" {
+        forma: cubo(200, 200, 2);
+        posicion: [0, 0, 1];
+        color: [34, 139, 34];
+    }
+}
+
+entidad Arbol {
+    objeto "tronco" {
+        forma: cilindro(4, 25);
+        posicion: [0, 0, 14];
+        color: [101, 67, 33];
+    }
+    objeto "copa" {
+        forma: esfera(20);
+        posicion: [0, 0, 35];
+        color: [34, 139, 34];
+    }
+}
+
+entidad Banca {
+    objeto "asiento" {
+        forma: cubo(30, 12, 3);
+        posicion: [40, 0, 17];
+        color: [139, 90, 43];
+    }
+    objeto "respaldo" {
+        forma: cubo(30, 3, 15);
+        posicion: [40, -6, 25];
+        color: [139, 90, 43];
+    }
+    objeto "pata_izq" {
+        forma: cilindro(2, 17);
+        posicion: [28, 0, 8];
+        color: [100, 60, 30];
+    }
+    objeto "pata_der" {
+        forma: cilindro(2, 17);
+        posicion: [52, 0, 8];
+        color: [100, 60, 30];
+    }
+}
+
+entidad Farola {
+    objeto "poste" {
+        forma: cilindro(2, 40);
+        posicion: [-30, 20, 20];
+        color: [60, 60, 60];
+    }
+    objeto "luz" {
+        forma: esfera(5);
+        posicion: [-30, 20, 42];
+        color: [255, 230, 150];
+    }
+}
+
+escena Parque {
+    Suelo s1;
+    Arbol a1, a2, a3;
+    Banca b1;
+    Farola f1;
+    s1.set_posicion([0, 0, 1]);
+    a1.set_posicion([20, 0, 10]);
+    a2.set_posicion([-20, 0, 10]);
+    a3.set_posicion([0, 0, 30]);
+    b1.set_posicion([40, 0, 17]);
+    f1.set_posicion([-30, 20, 20]);
+}`,
+      'Sistema Solar (Animado)': `camara {
+    posicion: [0, 80, 50];
+    objetivo: "s1";
+}
+
+entidad SistemaSolar {
+    objeto "sol" {
+        forma: esfera(10);
+        posicion: [0, 0, 0];
+        color: [255, 200, 0];
+        animacion "girar" {
+            tipo: "rotacion";
+            eje: [0, 0, 1];
+            velocidad: 1.5;
+        }
+    }
+    objeto "planeta" {
+        forma: esfera(4);
+        posicion: [0, 0, 0];
+        color: [50, 100, 255];
+        animacion "orbitar" {
+            tipo: "orbital";
+            radio: 30;
+            velocidad: 2.0;
+        }
+    }
+    objeto "luna" {
+        forma: esfera(1.5);
+        posicion: [0, 0, 0];
+        color: [200, 200, 200];
+        animacion "orbitar_luna" {
+            tipo: "orbital";
+            radio: 40;
+            velocidad: 4.0;
+        }
+    }
+}
+
+escena Galaxia {
+    SistemaSolar s1;
+    s1.set_posicion([0, 0, 0]);
+}`
+    };
+
+    // Populate examples dropdown
+    (function () {
+      const sel = document.getElementById('examples');
+      for (const name of Object.keys(EXAMPLES)) {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        sel.appendChild(opt);
+      }
+      sel.onchange = function () {
+        if (this.value === "nuevo") {
+          document.getElementById('code').value = "";
+        } else if (this.value && EXAMPLES[this.value]) {
+          document.getElementById('code').value = EXAMPLES[this.value];
+        }
+      };
+      // Line/col tracker
+      const ta = document.getElementById('code');
+      ta.addEventListener('keyup', updateLineInfo);
+      ta.addEventListener('click', updateLineInfo);
+      function updateLineInfo() {
+        const v = ta.value.substring(0, ta.selectionStart);
+        const lines = v.split('\n');
+        document.getElementById('lineInfo').textContent = `Línea ${lines.length}, Col ${lines[lines.length - 1].length + 1} · ${ta.value.length} caracteres`;
+      }
+      // Load first example
+      sel.value = 'Cama';
+      ta.value = EXAMPLES['Cama'];
+    })();
+
+    function toggleGrid() {
+      if (!scene3d) return;
+      const g = scene3d.getObjectByName('grid3d');
+      if (g) {
+        g.visible = !g.visible;
+        const btn = document.getElementById('btnToggleGrid');
+        if (g.visible) {
+          btn.innerHTML = 'Ocultar cuadrícula';
+          btn.classList.remove('active');
+        } else {
+          btn.innerHTML = 'Mostrar cuadrícula';
+          btn.classList.add('active');
+        }
+      }
+    }
+  </script>
+</body>
+
+</html>
