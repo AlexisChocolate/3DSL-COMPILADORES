@@ -16,7 +16,7 @@ function runAnalysis() {
   // Reset
   ['lexico','sintactico','semantico','ejecucion'].forEach(t => setDot(t,'none'));
 
-  // ── FASE 1: LÉXICO ──
+  // Fase 1: Léxico
   const lex = new AnalizadorLexico(src);
   const lexOk = lex.analizar();
   const pLex = document.getElementById('pane-lexico');
@@ -49,7 +49,7 @@ function runAnalysis() {
   pLex.innerHTML = tableHTML;
   setDot('lexico','ok');
 
-  // ── FASE 2: SINTÁCTICO ──
+  // Fase 2: Sintáctico
   const sint = new AnalizadorSintactico();
   let sintOk;
   try {
@@ -77,7 +77,7 @@ function runAnalysis() {
     <div class="msg msg-info">El autómata finito modular recorrió todos los tokens y alcanzó un estado final válido. Los módulos INICIO, CÁMARA, ENTIDAD, ESCENA y VECTOR procesaron la estructura correctamente.</div>`;
   setDot('sintactico','ok');
 
-  // ── FASE 3: SEMÁNTICO ──
+  // Fase 3: Semántico
   const sem = new AnalizadorSemantico();
   const errores = sem.analizar(lex.tokensInfo);
   const pSem = document.getElementById('pane-semantico');
@@ -105,7 +105,7 @@ function runAnalysis() {
     return;
   }
 
-  // ── FASE 4: EJECUCIÓN 3D ──
+  // Fase 4: Ejecución 3D
   const pExe = document.getElementById('pane-ejecucion');
   try {
     const sceneData = extractSceneData(lex.tokensInfo);

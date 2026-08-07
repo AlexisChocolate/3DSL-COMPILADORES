@@ -50,9 +50,7 @@ const n={0:'CAMARA',1:'ENTIDAD',2:'OBJETO',3:'COLISION',4:'SONIDO',5:'COMPORTAMI
 Object.assign(TOKEN_NAMES,n);
 })();
 
-// ═══════════════════════════════════════════════════════════════
-//  TABLA DE PALABRAS CLAVE
-// ═══════════════════════════════════════════════════════════════
+// Palabras clave
 const KEYWORDS = {
 camara:CAMARA,entidad:ENTIDAD,objeto:OBJETO,colision:COLISION,sonido:SONIDO,
 comportamiento:COMPORTAMIENTO,controles:CONTROLES,fisicas:FISICAS,animacion:ANIMACION,

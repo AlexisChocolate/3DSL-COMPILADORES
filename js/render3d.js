@@ -77,7 +77,7 @@ function renderScene(data, container) {
     mesh.rotateOnWorldAxis(ejeTmp, delta);
   }
 
-  // ── Estado del jugador controlable y de los cuerpos estáticos ──
+  // Estado del jugador y de cuerpos estáticos
   let jugador = null;          // { group, controles, vel, bbox }
   const cajasEstaticas = [];   // AABB en coordenadas de mundo
 
@@ -232,7 +232,7 @@ function renderScene(data, container) {
 
   const clock = new THREE.Clock();
 
-  // ── Entrada de teclado (bloque `controles` del DSL) ──
+  // Entrada de teclado (bloque controles del DSL)
   const teclas = {};
   if (teclaHandlers) {
     window.removeEventListener('keydown', teclaHandlers.down);
@@ -360,7 +360,7 @@ function renderScene(data, container) {
                     (mesh.userData.animEstado[ai] = {angPrev:0, t:0, terminada:false});
         if (est.terminada) continue;
 
-        // ── loop / duracion ──
+        // Manejo de loop y duración
         // `loop: true` (o ausente) repite indefinidamente. `loop: false` corre una sola
         // pasada: dura `duracion` si se declaró, o un ciclo completo si no, y luego
         // congela la malla en el estado alcanzado.
