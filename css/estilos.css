@@ -138,6 +138,10 @@ body {
   max-width: 240px;
 }
 
+.toolbar select option[value=""] {
+  display: none !important;
+}
+
 .toolbar select:focus {
   outline: 1px solid var(--accent);
   border-color: var(--accent);

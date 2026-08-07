@@ -39,9 +39,12 @@
     const lines = v.split('\n');
     document.getElementById('lineInfo').textContent = `Línea ${lines.length}, Col ${lines[lines.length-1].length+1} · ${ta.value.length} caracteres`;
   }
-  // Load first example
-  sel.value = 'Cama';
-  ta.value = EXAMPLES['Cama'];
+  // Initial placeholder setup
+  sel.value = '';
+  if (sel.options[0]) {
+    sel.options[0].disabled = true;
+    sel.options[0].hidden = true;
+  }
 })();
 
 function toggleGrid() {

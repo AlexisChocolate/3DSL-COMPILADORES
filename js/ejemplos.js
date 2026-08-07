@@ -342,19 +342,29 @@ escena juego1 {
     }
     objeto "pata_1" {
         forma: cilindro(2, 12);
-        posicion: [-20, 35, 6];
+        posicion: [-20, 33, 6];
         color: [100, 60, 30];
     }
     objeto "pata_2" {
         forma: cilindro(2, 12);
-        posicion: [20, 35, 6];
+        posicion: [20, 33, 6];
+        color: [100, 60, 30];
+    }
+    objeto "pata_3" {
+        forma: cilindro(2, 12);
+        posicion: [-20, -33, 6];
+        color: [100, 60, 30];
+    }
+    objeto "pata_4" {
+        forma: cilindro(2, 12);
+        posicion: [20, -33, 6];
         color: [100, 60, 30];
     }
 }`,
 'Árbol': `entidad Arbol {
     objeto "tronco" {
         forma: cilindro(4, 25);
-        posicion: [0, 0, 12];
+        posicion: [0, 0, 12.5];
         color: [101, 67, 33];
     }
     objeto "copa_baja" {
@@ -369,15 +379,88 @@ escena juego1 {
     }
 }`,
 'Muñeco de Nieve': `entidad Muneco {
-    objeto "cuerpo" {
-        forma: esfera(15);
-        posicion: [0, 0, 15];
-        color: [240, 240, 255];
+    objeto "base" {
+        forma: esfera(18);
+        posicion: [0, 0, 16];
+        color: [240, 245, 255];
+    }
+    objeto "cuerpo_medio" {
+        forma: esfera(13);
+        posicion: [0, 0, 38];
+        color: [245, 248, 255];
     }
     objeto "cabeza" {
-        forma: esfera(10);
-        posicion: [0, 0, 35];
-        color: [245, 245, 255];
+        forma: esfera(9);
+        posicion: [0, 0, 54];
+        color: [250, 250, 255];
+    }
+    objeto "ojo_izquierdo" {
+        forma: esfera(1.5);
+        posicion: [-3, 7.5, 56];
+        color: [30, 30, 30];
+    }
+    objeto "ojo_derecho" {
+        forma: esfera(1.5);
+        posicion: [3, 7.5, 56];
+        color: [30, 30, 30];
+    }
+    objeto "nariz_zanahoria" {
+        forma: cono(2, 10);
+        posicion: [0, 9, 54];
+        rotacion: [90, 0, 0];
+        color: [255, 120, 0];
+    }
+    objeto "boton_1" {
+        forma: esfera(1.5);
+        posicion: [0, 12.5, 42];
+        color: [40, 40, 40];
+    }
+    objeto "boton_2" {
+        forma: esfera(1.5);
+        posicion: [0, 13, 38];
+        color: [40, 40, 40];
+    }
+    objeto "boton_3" {
+        forma: esfera(1.5);
+        posicion: [0, 12.5, 34];
+        color: [40, 40, 40];
+    }
+    objeto "brazo_izquierdo" {
+        forma: cilindro(1.2, 22);
+        posicion: [-18, 0, 39];
+        rotacion: [0, 50, 0];
+        color: [101, 67, 33];
+    }
+    objeto "brazo_derecho" {
+        forma: cilindro(1.2, 22);
+        posicion: [18, 0, 39];
+        rotacion: [0, -50, 0];
+        color: [101, 67, 33];
+    }
+    objeto "bufanda_cuello" {
+        forma: cilindro(10, 3);
+        posicion: [0, 0, 46];
+        color: [220, 30, 30];
+    }
+    objeto "bufanda_caida" {
+        forma: cubo(3, 3, 14);
+        posicion: [4, 7, 39];
+        color: [220, 30, 30];
+    }
+    objeto "sombrero_ala" {
+        forma: cilindro(12, 2);
+        posicion: [0, 0, 62];
+        color: [25, 25, 25];
+    }
+    objeto "sombrero_copa" {
+        forma: cilindro(7, 10);
+        posicion: [0, 0, 68];
+        color: [25, 25, 25];
+    }
+    objeto "sombrero_cinta" {
+        forma: cilindro(7.2, 2);
+        posicion: [0, 0, 64];
+        color: [220, 30, 30];
     }
 }`,
 'Mesa': `entidad Mesa {
@@ -387,23 +470,23 @@ escena juego1 {
         color: [160, 110, 60];
     }
     objeto "pata_1" {
-        forma: cilindro(2, 25);
-        posicion: [-22, -12, 12];
+        forma: cilindro(2, 23.5);
+        posicion: [-22, -12, 11.75];
         color: [120, 80, 40];
     }
     objeto "pata_2" {
-        forma: cilindro(2, 25);
-        posicion: [22, -12, 12];
+        forma: cilindro(2, 23.5);
+        posicion: [22, -12, 11.75];
         color: [120, 80, 40];
     }
     objeto "pata_3" {
-        forma: cilindro(2, 25);
-        posicion: [-22, 12, 12];
+        forma: cilindro(2, 23.5);
+        posicion: [-22, 12, 11.75];
         color: [120, 80, 40];
     }
     objeto "pata_4" {
-        forma: cilindro(2, 25);
-        posicion: [22, 12, 12];
+        forma: cilindro(2, 23.5);
+        posicion: [22, 12, 11.75];
         color: [120, 80, 40];
     }
 }`,
@@ -422,19 +505,19 @@ escena juego1 {
 'Escalón': `entidad Escalon {
     objeto "piso_bajo" {
         forma: cubo(30, 20, 5);
-        posicion: [0, 0, 2];
+        posicion: [0, 0, 2.5];
         color: [150, 150, 150];
     }
     objeto "piso_alto" {
         forma: cubo(30, 20, 5);
-        posicion: [0, -20, 7];
+        posicion: [0, -20, 7.5];
         color: [170, 170, 170];
     }
 }`,
 'Cruz': `entidad Cruz {
     objeto "base" {
         forma: cilindro(10, 3);
-        posicion: [0, 0, 1];
+        posicion: [0, 0, 1.5];
         color: [100, 100, 100];
     }
     objeto "vertical" {
@@ -455,23 +538,23 @@ escena juego1 {
         color: [50, 50, 60];
     }
     objeto "pata_1" {
-        forma: cilindro(2, 35);
-        posicion: [-36, -21, 17];
+        forma: cilindro(2, 33);
+        posicion: [-36, -21, 16.5];
         color: [40, 40, 50];
     }
     objeto "pata_2" {
-        forma: cilindro(2, 35);
-        posicion: [36, -21, 17];
+        forma: cilindro(2, 33);
+        posicion: [36, -21, 16.5];
         color: [40, 40, 50];
     }
     objeto "pata_3" {
-        forma: cilindro(2, 35);
-        posicion: [-36, 21, 17];
+        forma: cilindro(2, 33);
+        posicion: [-36, 21, 16.5];
         color: [40, 40, 50];
     }
     objeto "pata_4" {
-        forma: cilindro(2, 35);
-        posicion: [36, 21, 17];
+        forma: cilindro(2, 33);
+        posicion: [36, 21, 16.5];
         color: [40, 40, 50];
     }
     objeto "pantalla" {
@@ -563,12 +646,12 @@ escena SetupGamer {
     }
     objeto "pie_izq" {
         forma: cubo(8, 10, 3);
-        posicion: [-6, 2, 1];
+        posicion: [-6, 2, 1.5];
         color: [80, 80, 100];
     }
     objeto "pie_der" {
         forma: cubo(8, 10, 3);
-        posicion: [6, 2, 1];
+        posicion: [6, 2, 1.5];
         color: [80, 80, 100];
     }
 }`,
@@ -587,7 +670,7 @@ escena SetupGamer {
 'Parque': `entidad Suelo {
     objeto "pasto" {
         forma: cubo(200, 200, 2);
-        posicion: [0, 0, 1];
+        posicion: [0, 0, 0];
         color: [34, 139, 34];
     }
 }
@@ -595,12 +678,12 @@ escena SetupGamer {
 entidad Arbol {
     objeto "tronco" {
         forma: cilindro(4, 25);
-        posicion: [0, 0, 14];
+        posicion: [0, 0, 12.5];
         color: [101, 67, 33];
     }
     objeto "copa" {
         forma: esfera(20);
-        posicion: [0, 0, 35];
+        posicion: [0, 0, 32];
         color: [34, 139, 34];
     }
 }
@@ -608,50 +691,68 @@ entidad Arbol {
 entidad Banca {
     objeto "asiento" {
         forma: cubo(30, 12, 3);
-        posicion: [40, 0, 17];
+        posicion: [0, 0, 12];
         color: [139, 90, 43];
     }
     objeto "respaldo" {
-        forma: cubo(30, 3, 15);
-        posicion: [40, -6, 25];
+        forma: cubo(30, 3, 14);
+        posicion: [0, -5.5, 19];
         color: [139, 90, 43];
     }
-    objeto "pata_izq" {
-        forma: cilindro(2, 17);
-        posicion: [28, 0, 8];
-        color: [100, 60, 30];
+    objeto "pata_izq_frente" {
+        forma: cilindro(1.5, 11);
+        posicion: [-13, 4.5, 5.5];
+        color: [60, 40, 20];
     }
-    objeto "pata_der" {
-        forma: cilindro(2, 17);
-        posicion: [52, 0, 8];
-        color: [100, 60, 30];
+    objeto "pata_der_frente" {
+        forma: cilindro(1.5, 11);
+        posicion: [13, 4.5, 5.5];
+        color: [60, 40, 20];
+    }
+    objeto "pata_izq_atras" {
+        forma: cilindro(1.5, 11);
+        posicion: [-13, -4.5, 5.5];
+        color: [60, 40, 20];
+    }
+    objeto "pata_der_atras" {
+        forma: cilindro(1.5, 11);
+        posicion: [13, -4.5, 5.5];
+        color: [60, 40, 20];
     }
 }
 
 entidad Farola {
+    objeto "base" {
+        forma: cilindro(5, 2);
+        posicion: [0, 0, 1];
+        color: [40, 40, 40];
+    }
     objeto "poste" {
         forma: cilindro(2, 40);
-        posicion: [-30, 20, 20];
+        posicion: [0, 0, 21];
         color: [60, 60, 60];
     }
     objeto "luz" {
-        forma: esfera(5);
-        posicion: [-30, 20, 42];
-        color: [255, 230, 150];
+        forma: esfera(6);
+        posicion: [0, 0, 43];
+        color: [255, 235, 130];
     }
 }
 
 escena Parque {
     Suelo s1;
-    Arbol a1, a2, a3;
-    Banca b1;
-    Farola f1;
-    s1.set_posicion([0, 0, 1]);
-    a1.set_posicion([20, 0, 10]);
-    a2.set_posicion([-20, 0, 10]);
-    a3.set_posicion([0, 0, 30]);
-    b1.set_posicion([40, 0, 17]);
-    f1.set_posicion([-30, 20, 20]);
+    Arbol a1, a2, a3, a4;
+    Banca b1, b2;
+    Farola f1, f2;
+    s1.set_posicion([0, 0, -1]);
+    a1.set_posicion([45, 45, 0]);
+    a2.set_posicion([-45, 45, 0]);
+    a3.set_posicion([-45, -45, 0]);
+    a4.set_posicion([45, -45, 0]);
+    b1.set_posicion([25, 0, 0]);
+    b2.set_posicion([-25, 0, 0]);
+    f1.set_posicion([0, 35, 0]);
+    f2.set_posicion([0, -35, 0]);
 }`,
 'Sistema Solar (Animado)': `camara {
     posicion: [0, 80, 50];
@@ -694,5 +795,215 @@ entidad SistemaSolar {
 escena Galaxia {
     SistemaSolar s1;
     s1.set_posicion([0, 0, 0]);
+}`,
+'Estación Espacial': `camara {
+    posicion: [0, -130, 60];
+    objetivo: "st1";
+    distancia: 160;
+    angulo: [30, 0, 0];
+}
+
+gravedad: [0, 0, 0];
+iluminacion: [0.9, 0.95, 1.0];
+
+entidad NucleoEstacion {
+    objeto "modulo_central" {
+        forma: cilindro(16, 60);
+        posicion: [0, 0, 0];
+        color: [200, 210, 225];
+        material: "titanio";
+    }
+    objeto "cupula_mando" {
+        forma: esfera(14);
+        posicion: [0, 0, 34];
+        color: [0, 220, 255];
+        material: "cristal_blindado";
+    }
+    objeto "anillo_acoplamiento" {
+        forma: cilindro(22, 6);
+        posicion: [0, 0, 0];
+        color: [100, 110, 130];
+        animacion "girar_anillo" {
+            tipo: "rotacion";
+            eje: [0, 0, 1];
+            velocidad: 0.8;
+            loop: true;
+        }
+    }
+    objeto "reactor_fusion" {
+        forma: esfera(10);
+        posicion: [0, 0, -35];
+        color: [255, 100, 0];
+        animacion "pulso_energia" {
+            tipo: "color_pulse";
+            colores: [[255,100,0], [255,200,50], [255,100,0]];
+            duracion: 1.5s;
+            loop: true;
+        }
+    }
+    objeto "antena_comunicaciones" {
+        forma: cono(12, 15);
+        posicion: [0, 0, 48];
+        rotacion: [180, 0, 0];
+        color: [220, 220, 240];
+    }
+}
+
+entidad PanelesSolares {
+    objeto "estructura_soporte" {
+        forma: cubo(120, 4, 4);
+        posicion: [0, 0, 0];
+        color: [80, 85, 95];
+    }
+    objeto "panel_izq" {
+        forma: cubo(50, 20, 1);
+        posicion: [-40, 0, 0];
+        color: [10, 60, 180];
+        material: "silicio_solar";
+    }
+    objeto "panel_der" {
+        forma: cubo(50, 20, 1);
+        posicion: [40, 0, 0];
+        color: [10, 60, 180];
+        material: "silicio_solar";
+    }
+}
+
+entidad AnilloHabitacional {
+    objeto "seccion_norte" {
+        forma: cubo(16, 20, 16);
+        posicion: [0, 60, 0];
+        color: [180, 190, 205];
+    }
+    objeto "seccion_sur" {
+        forma: cubo(16, 20, 16);
+        posicion: [0, -60, 0];
+        color: [180, 190, 205];
+    }
+    objeto "seccion_este" {
+        forma: cubo(20, 16, 16);
+        posicion: [60, 0, 0];
+        color: [180, 190, 205];
+    }
+    objeto "seccion_oeste" {
+        forma: cubo(20, 16, 16);
+        posicion: [-60, 0, 0];
+        color: [180, 190, 205];
+    }
+    objeto "conector_1" {
+        forma: cilindro(3, 60);
+        posicion: [30, 0, 0];
+        rotacion: [0, 90, 0];
+        color: [120, 130, 145];
+    }
+    objeto "conector_2" {
+        forma: cilindro(3, 60);
+        posicion: [-30, 0, 0];
+        rotacion: [0, 90, 0];
+        color: [120, 130, 145];
+    }
+    objeto "conector_3" {
+        forma: cilindro(3, 60);
+        posicion: [0, 30, 0];
+        rotacion: [90, 0, 0];
+        color: [120, 130, 145];
+    }
+    objeto "conector_4" {
+        forma: cilindro(3, 60);
+        posicion: [0, -30, 0];
+        rotacion: [90, 0, 0];
+        color: [120, 130, 145];
+    }
+}
+
+entidad TransbordadorEspacial {
+    objeto "fuselaje" {
+        forma: cono(6, 24);
+        posicion: [0, 0, 0];
+        rotacion: [-90, 0, 0];
+        color: [230, 230, 240];
+    }
+    objeto "cabina" {
+        forma: esfera(4);
+        posicion: [0, 6, 2];
+        color: [0, 180, 255];
+    }
+    objeto "ala_izq" {
+        forma: cubo(16, 10, 1);
+        posicion: [-8, -4, 0];
+        color: [150, 30, 30];
+    }
+    objeto "ala_der" {
+        forma: cubo(16, 10, 1);
+        posicion: [8, -4, 0];
+        color: [150, 30, 30];
+    }
+    objeto "propulsor_izq" {
+        forma: cilindro(2.5, 8);
+        posicion: [-4, -12, 0];
+        rotacion: [90, 0, 0];
+        color: [50, 50, 60];
+    }
+    objeto "propulsor_der" {
+        forma: cilindro(2.5, 8);
+        posicion: [4, -12, 0];
+        rotacion: [90, 0, 0];
+        color: [50, 50, 60];
+    }
+    objeto "fuego_propulsor" {
+        forma: cono(2, 6);
+        posicion: [0, -15, 0];
+        rotacion: [90, 0, 0];
+        color: [0, 200, 255];
+        animacion "propulsion" {
+            tipo: "escalado_ciclico";
+            factor: [1.2, 1.5, 1.2];
+            duracion: 0.2s;
+            loop: true;
+        }
+    }
+    controles {
+        W: aplicar_fuerza [0, 25, 0];
+        S: aplicar_fuerza [0, -20, 0];
+        A: aplicar_fuerza [-25, 0, 0];
+        D: aplicar_fuerza [25, 0, 0];
+        ESPACIO: aplicar_fuerza [0, 0, 25];
+        SHIFT: aplicar_fuerza [0, 0, -25];
+        R: recargar_escena;
+    }
+}
+
+entidad SateliteExplorador {
+    objeto "cuerpo_satelite" {
+        forma: cubo(6, 6, 6);
+        posicion: [0, 0, 0];
+        color: [220, 220, 100];
+        animacion "orbita_estacion" {
+            tipo: "orbital";
+            radio: 85;
+            velocidad: 1.2;
+            loop: true;
+        }
+    }
+    objeto "antena_satelite" {
+        forma: esfera(2);
+        posicion: [0, 0, 5];
+        color: [255, 50, 50];
+    }
+}
+
+escena EstacionSectorAlfa {
+    NucleoEstacion st1;
+    PanelesSolares ps1, ps2;
+    AnilloHabitacional ah1;
+    TransbordadorEspacial nave1;
+    SateliteExplorador sat1;
+
+    st1.set_posicion([0, 0, 0]);
+    ps1.set_posicion([0, 0, 25]);
+    ps2.set_posicion([0, 0, -25]);
+    ah1.set_posicion([0, 0, 0]);
+    nave1.set_posicion([0, -90, 10]);
+    sat1.set_posicion([0, 0, 0]);
 }`
 };
