@@ -86,14 +86,3 @@ el primero:
 - **Animación**: una `velocidad` explícita tiene prioridad sobre `duracion`.
   `loop: false` corre una sola pasada y congela; ausente o `true` repite.
 
-## Pendientes conocidos
-
-- Los tipos de animación `onda`, `escalado_ciclico`, `escalado_estirar` y
-  `color_pulse` se analizan pero no se ejecutan.
-- Los bloques `colision` no disparan eventos: `al_colisionar_con` no hace nada
-  en tiempo de ejecución.
-- La física ignora `masa`, `rebote` y `rugosidad`; el rozamiento es una
-  constante del motor, no del DSL.
-- Las cajas de colisión no consideran `rotacion:`.
-- `W`, `S`, `A`, `D` y `R` son palabras reservadas (teclas de control), así que
-  no pueden usarse como nombre de entidad o instancia.
