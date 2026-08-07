@@ -1,7 +1,3 @@
-// ==================================================================
-//  FASE 1 - ANALIZADOR LEXICO
-//  Convierte el texto fuente en tokens. Depende de: tokens.js
-// ==================================================================
 
 class AnalizadorLexico {
   constructor(src) {

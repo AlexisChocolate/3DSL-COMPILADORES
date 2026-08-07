@@ -1,7 +1,3 @@
-// ==================================================================
-//  FASE 3 - ANALIZADOR SEMANTICO
-//  Valida rangos, aridades y referencias. Depende de: tokens.js
-// ==================================================================
 
 class AnalizadorSemantico {
   constructor() { this.errores = []; this.instancias = new Set(); }

@@ -1,7 +1,3 @@
-// ==================================================================
-//  EJECUCION - RENDERIZADOR 3D
-//  Escena con Three.js, fisica y controles. Depende de: tokens.js, escena.js
-// ==================================================================
 
 let renderer3d=null, scene3d=null, camera3d=null, animFrame=null, teclaHandlers=null;
 

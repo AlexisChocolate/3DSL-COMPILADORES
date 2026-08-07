@@ -1,7 +1,3 @@
-// ==================================================================
-//  TOKENS Y PALABRAS CLAVE
-//  Constantes de token, nombres legibles y tabla de keywords.
-// ==================================================================
 
 const CAMARA=0,ENTIDAD=1,OBJETO=2,COLISION=3,SONIDO=4,COMPORTAMIENTO=5,
 CONTROLES=6,FISICAS=7,ANIMACION=8,ESCENA=9,APARENTESIS=10,CPARENTESIS=11,

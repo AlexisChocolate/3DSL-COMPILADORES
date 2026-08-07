@@ -1,36 +1,19 @@
-// ==================================================================
-//  FASE 2 - ANALIZADOR SINTACTICO
-//  Automata finito modular con pila de retorno. Depende de: tokens.js
-// ==================================================================
 
-// Varios puntos del lenguaje reutilizan los mismos estados: una propiedad
-// `x: valor;` (12), una forma (33), una llamada a acción (45), un bloque
-// `animacion` (34)... Son subrutinas del autómata, y al entrar en una hay que
-// recordar dónde seguir al salir. Eso es una PILA DE RETORNO, igual que la de
-// llamadas de una función: por eso un único registro no alcanzaba y hubo que
-// inventar `animParentState` aparte cuando las animaciones se anidaron.
-//
-// Clave = estado subrutina. Valor = null si se entra desde cualquier estado,
-// o la lista de estados desde los que esa entrada cuenta como llamada.
 const ENTRADAS_SUBRUTINA = {
-  12: null,   // prop: valor;
-  33: null,   // forma: figura(...)
-  17: null,   // camara → efectos → prop
-  45: null,   // hub de acciones
-  500: null,  // activar_si (se omite hasta el ;)
-  34: null,   // bloque animacion
-  14: [4,5]   // gravedad:/iluminacion: en INICIO entran a 14 sin pasar por 12
+  12: null,  
+  33: null,  
+  17: null,   
+  45: null,   
+  500: null,  
+  34: null,   
+  14: [4,5]   
 };
 
-// Dónde continúa el bloque que contiene la sentencia. Por defecto es el propio
-// estado (las listas de propiedades vuelven sobre sí mismas); los estados
-// intermedios —la tecla en `controles`, el `obj.` de una llamada en escena—
-// delegan en el estado que reanuda la lista.
 const CONTINUACION_BLOQUE = {
-  73: 71,                                    // W: accion...  → vuelve a la lista de teclas
-  403: 44,                                   // obj.accion(...) dentro de al_colisionar
-  4: 0, 5: 0,                                // gravedad:/iluminacion: → nivel superior
-  986: 83, 90: 83, 91: 83, 94: 83, 95: 83, 96: 83   // llamadas dentro de escena
+  73: 71,                                  
+  403: 44,                                  
+  4: 0, 5: 0,                              
+  986: 83, 90: 83, 91: 83, 94: 83, 95: 83, 96: 83   
 };
 
 class AnalizadorSintactico {
@@ -216,18 +199,15 @@ class AnalizadorSintactico {
     return ERROR;
   }
 
-  // Entrar a una subrutina: guarda dónde continuar. Sustituye a la antigua
-  // cadena de if/else que mezclaba casos de CAMARA, ENTIDAD y ESCENA.
   apilarRetorno(prev, nuevo) {
-    if (prev === nuevo) return;                      // auto-transición, no es llamada
+    if (prev === nuevo) return;                      
     const desde = ENTRADAS_SUBRUTINA[nuevo];
-    if (desde === undefined) return;                 // el destino no es subrutina
+    if (desde === undefined) return;                
     if (desde !== null && desde.indexOf(prev) === -1) return;
     const cont = CONTINUACION_BLOQUE[prev];
     this.pilaRetorno.push(cont !== undefined ? cont : prev);
   }
 
-  // Salir de una subrutina. Con la pila vacía cae al nivel superior (0).
   desapilarRetorno() {
     return this.pilaRetorno.length ? this.pilaRetorno.pop() : 0;
   }
@@ -296,8 +276,6 @@ class AnalizadorSintactico {
     const prev = this.estadoActual;
     let nuevo = this.transitar(this.modoActual, this.estadoActual, token);
 
-    // Paréntesis vacíos: `accion()`. El retorno correcto ya está en la pila
-    // desde que se entró a 45, así que aquí sólo hay que avanzar a 15.
     if (nuevo===ERROR && this.estadoActual===46) {
       if (token===CPARENTESIS) {
         this.estadoActual=15;
@@ -307,10 +285,6 @@ class AnalizadorSintactico {
     }
 
     if (nuevo===ERROR) {
-      // Un token de apertura (entidad/escena/camara/[) puede abrir otro módulo.
-      // Guardamos dónde estábamos: si cambiarModulo nos deja en el MISMO sitio,
-      // reintentar sería recursión infinita — p. ej. `entidad entidad X {}`
-      // desbordaba la pila y tumbaba la página en vez de reportar el error.
       const modoPrevio = this.modoActual, estadoPrevio = this.estadoActual;
       const mr = this.cambiarModulo(token);
       if (mr!==ERROR &&

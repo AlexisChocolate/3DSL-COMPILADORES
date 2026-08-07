@@ -1,14 +1,10 @@
-// ==================================================================
-//  EXTRACTOR DE ESCENA
-//  Traduce los tokens al modelo que consume el render. Depende de: tokens.js
-// ==================================================================
 
 function parseVec(vecStr) {
   const nums = vecStr.replace(/[\[\]]/g,'').split(',').map(s => parseFloat(s.trim()));
   return nums.filter(n => !isNaN(n));
 }
 
-// Separa un lexema NUM_CON_SUFIJO ("0.3s", "90grados/s", "2s") en número y unidad
+
 function parseValorUnidad(lex) {
   const m = String(lex).match(/^([0-9]*\.?[0-9]+)(.*)$/);
   if (!m) return { valor: 0, unidad: '' };
@@ -25,9 +21,7 @@ function extractSceneData(toks) {
   let cameraConfig = null;
   let i = 0;
 
-  // ── Globales declaradas: gravedad, iluminacion ──
-  // (se buscan en una pasada aparte porque son sentencias de nivel superior;
-  //  gravedad_influencia y activar_gravedad son tokens distintos, no colisionan)
+
   const globals = { gravedad: null, iluminacion: null };
   for (let g = 0; g + 2 < toks.length; g++) {
     if (toks[g].id===GRAVEDAD && toks[g+1].id===DOS_PUNTOS && toks[g+2].id===VECTOR)
@@ -38,7 +32,6 @@ function extractSceneData(toks) {
       globals.gravedad = parseVec(toks[g+2].lexema);
   }
 
-  // Lee un bloque `controles { TECLA: accion [vec]; ... }` a partir del token CONTROLES
   function leerControles(start) {
     const mapa = {};
     const TECLAS = {[TW]:'w',[TS]:'s',[TA]:'a',[TD]:'d',[ESPACIO]:' ',[SHIFT]:'shift',[TR]:'r'};
@@ -159,8 +152,6 @@ function extractSceneData(toks) {
               if(toks[a].id===LOOP && a+2<toks.length && toks[a+1].id===DOS_PUNTOS && toks[a+2].id===BOOLEANO)
                 anim.loop = (toks[a+2].lexema === 'true');
               if(toks[a].id===ANGULO && a+2<toks.length && toks[a+1].id===DOS_PUNTOS) {
-                // `angulo: 360` → giro completo;  `angulo: [-5, 5]` → rango de oscilación.
-                // Siempre en grados; se convierte a radianes aquí.
                 if (toks[a+2].id===VECTOR) {
                   const r = parseVec(toks[a+2].lexema);
                   if (r.length>=2) anim.anguloRango = [r[0]*Math.PI/180, r[1]*Math.PI/180];

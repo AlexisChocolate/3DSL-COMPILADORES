@@ -1,7 +1,3 @@
-// ==================================================================
-//  INTERFAZ
-//  Pestanas, orquestacion de las 3 fases y volcado de resultados.
-// ==================================================================
 
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));

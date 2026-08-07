@@ -1,7 +1,3 @@
-// ==================================================================
-//  EJEMPLOS PRECARGADOS
-//  Solo datos: codigo fuente DSL de muestra. Sin dependencias.
-// ==================================================================
 
 const EXAMPLES = {
 'Escena Completa (RPG)': `camara {

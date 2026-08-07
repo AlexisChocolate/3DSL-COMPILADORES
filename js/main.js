@@ -1,9 +1,3 @@
-// ==================================================================
-//  ARRANQUE
-//  Se ejecuta al cargar la pagina. Debe ser el ULTIMO script.
-// ==================================================================
-
-// Populate examples dropdown
 (function() {
   const sel = document.getElementById('examples');
   for (const name of Object.keys(EXAMPLES)) {
@@ -18,17 +12,14 @@
       document.getElementById('code').value = EXAMPLES[this.value];
     }
   };
-  // Line/col tracker
   const ta = document.getElementById('code');
   ta.addEventListener('keyup', updateLineInfo);
   ta.addEventListener('click', updateLineInfo);
-  // Permitir indentar con Tab en vez de mover el foco fuera del textarea
   ta.addEventListener('keydown', function(e) {
     if (e.key !== 'Tab') return;
     e.preventDefault();
     const start = ta.selectionStart, end = ta.selectionEnd;
     if (e.shiftKey) {
-      // Shift+Tab: quitar hasta 4 espacios o un tab al inicio de la línea actual
       const lineStart = ta.value.lastIndexOf('\n', start - 1) + 1;
       const lineText = ta.value.slice(lineStart, start);
       const match = lineText.match(/^(\t| {1,4})/);
@@ -38,7 +29,6 @@
         ta.selectionStart = ta.selectionEnd = Math.max(lineStart, start - removed);
       }
     } else {
-      // Tab: insertar 4 espacios en la posición del cursor
       ta.value = ta.value.slice(0, start) + '    ' + ta.value.slice(end);
       ta.selectionStart = ta.selectionEnd = start + 4;
     }
