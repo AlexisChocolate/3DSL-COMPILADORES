@@ -47,7 +47,7 @@ deliberado: permite corregir varios problemas en una sola pasada.
 
 1. Abrir `COMPILADORES.html` con doble clic. No necesita servidor ni instalación.
 2. Elegir un ejemplo del desplegable, o escribir el código en el panel izquierdo.
-3. Pulsar **▶ Analizar**.
+3. Pulsar **Analizar**.
 4. Revisar las pestañas del panel derecho: *Léxico*, *Sintáctico*, *Semántico* y
    *Ejecución 3D*.
 
