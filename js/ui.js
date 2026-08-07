@@ -97,7 +97,12 @@ function runAnalysis() {
     }
     errHTML += '</ul>';
     pSem.innerHTML = errHTML;
-    setDot('semantico','warn');
+    setDot('semantico','err');
+
+    document.getElementById('pane-ejecucion').innerHTML = '<div class="msg msg-info">La ejecución requiere que el análisis semántico pase sin errores.</div>';
+    setDot('ejecucion','none');
+    switchTab('semantico');
+    return;
   }
 
   // ── FASE 4: EJECUCIÓN 3D ──
