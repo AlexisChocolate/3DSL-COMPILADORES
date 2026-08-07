@@ -1,0 +1,507 @@
+/* DSL 3D - Analizador de Escenas | Compiladores 2026-I
+   Hoja de estilos unica. El ORDEN de las reglas importa (cascada):
+   no reordenar bloques sin comprobar que los selectores no se solapen. */
+
+/* ======================================================================
+   RESET Y VARIABLES DE TEMA
+   Paleta, tipografias y caja por defecto. Todo lo demas referencia estas vars.
+   ====================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Superficies */
+  --bg: #0b1120;
+  --surface: #131c31;
+  --card: #1a2540;
+  --border: #243352;
+
+  /* Color de acento */
+  --accent: #4682B4;
+  --accent-light: #5a9fd4;
+  --accent-dim: #2d5a80;
+
+  /* Texto */
+  --text: #e2e8f0;
+  --text2: #8b9dc3;
+  --text3: #5a6d8a;
+
+  /* Estados */
+  --ok: #22c55e;
+  --err: #f87171;
+  --warn: #fbbf24;
+
+  /* Tipografias */
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+}
+
+/* ======================================================================
+   CABECERA
+   ====================================================================== */
+
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-light);
+  letter-spacing: -0.3px;
+}
+
+.header .sub {
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.badge {
+  background: var(--accent-dim);
+  color: var(--accent-light);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* ======================================================================
+   LAYOUT PRINCIPAL
+   Dos columnas: editor a la izquierda, resultados a la derecha.
+   ====================================================================== */
+
+.main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}
+
+/* ======================================================================
+   PANEL IZQUIERDO - EDITOR
+   ====================================================================== */
+
+.editor-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.toolbar select,
+.toolbar button {
+  font-family: var(--sans);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.toolbar select {
+  background: var(--card);
+  color: var(--text);
+  flex: 1;
+  max-width: 240px;
+}
+
+.toolbar select:focus {
+  outline: 1px solid var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-run {
+  background: var(--accent);
+  color: #fff;
+  border: none!important;
+  font-weight: 600;
+  transition: background .15s;
+}
+
+.btn-run:hover {
+  background: var(--accent-light);
+}
+
+.btn-run:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+textarea#code {
+  flex: 1;
+  resize: none;
+  background: var(--bg);
+  color: var(--text);
+  border: none;
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 4;
+  outline: none;
+}
+
+textarea#code::placeholder {
+  color: var(--text3);
+}
+
+.line-info {
+  font-size: 11px;
+  color: var(--text3);
+  padding: 4px 14px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* ======================================================================
+   PANEL DERECHO - PESTANAS DE RESULTADOS
+   ====================================================================== */
+
+.results-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: rgba(70,130,180,.06);
+}
+
+.tab.active {
+  color: var(--accent-light);
+  border-bottom-color: var(--accent);
+}
+
+.tab .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.dot-ok {
+  background: var(--ok);
+}
+
+.dot-err {
+  background: var(--err);
+}
+
+.dot-warn {
+  background: var(--warn);
+}
+
+.dot-none {
+  background: var(--text3);
+}
+
+.tab-content {
+  flex: 1;
+  overflow: auto;
+  padding: 14px;
+}
+
+.tab-pane {
+  display: none;
+  height: 100%;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* ======================================================================
+   TABLA DE TOKENS
+   Salida de la fase lexica.
+   ====================================================================== */
+
+.tok-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+.tok-table th {
+  text-align: left;
+  padding: 6px 8px;
+  background: var(--surface);
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  font-weight: 600;
+}
+
+.tok-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(36,51,82,.4);
+  color: var(--text);
+}
+
+.tok-table tr:hover td {
+  background: rgba(70,130,180,.06);
+}
+
+.tok-table .ln {
+  color: var(--text3);
+  width: 35px;
+}
+
+.tok-table .tid {
+  color: var(--accent-light);
+  width: 35px;
+}
+
+.tok-table .lex {
+  color: var(--warn);
+}
+
+.tok-table .tname {
+  color: var(--text2);
+}
+
+/* ======================================================================
+   MENSAJES Y LISTAS DE ERRORES
+   Usados por las fases sintactica y semantica.
+   ====================================================================== */
+
+.msg {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.msg-ok {
+  background: linear-gradient(90deg, rgba(34,197,94,.15) 0%, rgba(34,197,94,.02) 100%);
+  border: 1px solid rgba(34,197,94,.1);
+  border-left: 4px solid var(--ok);
+  color: #4ade80;
+  font-weight: 500;
+  text-shadow: 0 0 10px rgba(74,222,128,0.2);
+}
+
+.msg-err {
+  background: rgba(248,113,113,.08);
+  border: 1px solid rgba(248,113,113,.2);
+  color: var(--err);
+}
+
+.msg-warn {
+  background: rgba(251,191,36,.08);
+  border: 1px solid rgba(251,191,36,.2);
+  color: var(--warn);
+}
+
+.msg-info {
+  background: rgba(70,130,180,.08);
+  border: 1px solid rgba(70,130,180,.2);
+  color: var(--accent-light);
+}
+
+.err-list {
+  list-style: none;
+  padding: 0;
+}
+
+.err-list li {
+  padding: 8px 12px;
+  border-left: 3px solid var(--err);
+  background: rgba(248,113,113,.05);
+  margin-bottom: 6px;
+  border-radius: 0 4px 4px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.err-list .code {
+  color: var(--err);
+  font-weight: 600;
+}
+
+.err-list .line {
+  color: var(--warn);
+}
+
+.err-list .emsg {
+  color: var(--text);
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text3);
+  font-size: 14px;
+  text-align: center;
+  padding: 40px;
+}
+
+/* ======================================================================
+   VISOR 3D
+   Salida de la fase de ejecucion.
+   ====================================================================== */
+
+#canvas3d {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--bg);
+  border-radius: 4px;
+  cursor: grab;
+}
+
+#canvas3d:active {
+  cursor: grabbing;
+}
+
+.scene-info {
+  font-size: 11px;
+  color: var(--text2);
+  padding: 8px 0;
+  font-family: var(--mono);
+}
+
+.scene-info span {
+  color: var(--accent-light);
+}
+
+/* ======================================================================
+   TARJETAS DE ESTADISTICAS
+   ====================================================================== */
+
+.stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+.stat-val {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--mono);
+}
+
+.stat-label {
+  color: var(--text2);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* ======================================================================
+   BARRAS DE DESPLAZAMIENTO
+   ====================================================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
+}
+
+/* ======================================================================
+   BOTONES SECUNDARIOS
+   ====================================================================== */
+
+.btn-toggle-msgs {
+  background: transparent;
+  color: var(--text3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--sans);
+}
+
+.btn-toggle-msgs:hover {
+  color: var(--text);
+  border-color: var(--text2);
+}
+
+.btn-toggle-msgs.active {
+  color: var(--accent-light);
+  border-color: var(--accent-dim);
+  background: rgba(70,130,180,.1);
+}
